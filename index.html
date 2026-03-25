@@ -84,6 +84,16 @@
         .file-link:hover { text-decoration: underline; }
         .section-title { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; margin-top: 15px; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 5px;}
 
+        /* Tasks (Cose da fare) */
+        .task-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px dashed var(--border); gap: 10px; }
+        .task-item:last-child { border-bottom: none; }
+        .task-text { flex-grow: 1; padding: 5px; border: 1px solid transparent; border-radius: 4px; font-size: 0.95rem; width: 100%; background: transparent; color: var(--primary); }
+        .task-text:focus { outline: none; border-color: var(--accent); background: #2a2a2a; }
+        .task-text.completed { text-decoration: line-through; color: var(--done); opacity: 0.6;}
+        .check-btn { width: 22px; height: 22px; border-radius: 4px; border: 2px solid var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.2s;}
+        .check-btn.active { background: var(--success); border-color: var(--success); color: white; }
+        .check-btn.active::after { content: '✓'; font-weight: bold; }
+
         /* Toast Appunti Copiati */
         #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: var(--success); color: #fff; text-align: center; border-radius: 8px; padding: 12px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; font-size: 0.95rem; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; }
         #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
@@ -196,6 +206,12 @@
             </div>
         </div>
 
+        <div class="card">
+            <h3 style="margin-bottom: 15px; font-size: 1.1rem;">✅ Cose da Fare</h3>
+            <div id="task-list"></div>
+            <button class="add-btn" onclick="addNewTask()">+ Aggiungi nuova attività</button>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div class="card" style="margin-bottom: 0;">
                 <h3 style="margin-bottom: 15px; font-size: 1.1rem;">📈 Umore Mensile</h3>
@@ -232,11 +248,13 @@
     let unsubscribeGlobal = null;
     let moodChartInstance = null;
     let habitsChartInstance = null;
+    const saveTimeouts = {}; 
 
     let globalIdeas = {};
     let globalFiles = {};
     let globalHabits = {};
     let globalSnippets = {}; 
+    let globalTasks = {};
 
     const moodEmojis = ["😭", "😢", "🙁", "😕", "😐", "🙂", "😊", "😁", "🥰", "🤩"];
 
@@ -314,19 +332,24 @@
         if(!currentUser) return;
         const ref = db.collection('utenti').doc(currentUser.uid).collection('impostazioni').doc('os_globals');
         unsubscribeGlobal = ref.onSnapshot(doc => {
+            const activeElement = document.activeElement;
+            const isTypingTask = activeElement && activeElement.classList.contains('task-text');
+
             if(doc.exists) {
                 const d = doc.data();
                 if(d.ideas) globalIdeas = d.ideas;
                 if(d.files) globalFiles = d.files;
                 if(d.habits) globalHabits = d.habits;
                 if(d.snippets) globalSnippets = d.snippets;
+                if(d.tasks) globalTasks = d.tasks;
             } else {
-                ref.set({ ideas: {}, files: {}, habits: {}, snippets: {} }, {merge:true});
+                ref.set({ ideas: {}, files: {}, habits: {}, snippets: {}, tasks: {} }, {merge:true});
             }
             renderIdeas(); 
             renderFiles();
             renderHabitsGlobal();
             renderSnippets();
+            if (!isTypingTask) renderTasks();
         });
     }
 
@@ -631,6 +654,58 @@
                 </div>
             `;
         });
+    }
+
+    // --- COSE DA FARE (Global Tasks) ---
+    function addNewTask() {
+        const id = "task_" + Date.now();
+        globalTasks[id] = { id: id, text: "", completed: false, ts: Date.now() };
+        updateGlobal('tasks', globalTasks);
+        setTimeout(() => {
+            const el = document.querySelector(`#${id} .task-text`);
+            if(el) { el.focus(); el.select(); }
+        }, 50);
+    }
+
+    function renderTasks() {
+        const list = document.getElementById('task-list');
+        if(!list) return;
+        list.innerHTML = '';
+        Object.values(globalTasks).sort((a,b) => a.ts - b.ts).forEach(data => {
+            const div = document.createElement('div'); div.className = 'task-item'; div.id = data.id;
+            div.innerHTML = `
+                <div class="check-btn ${data.completed ? 'active' : ''}" onclick="toggleTask('${data.id}')"></div>
+                <input type="text" class="task-text ${data.completed ? 'completed' : ''}" value="${data.text ? data.text.replace(/"/g, '&quot;') : ''}" placeholder="Nuova attività..." onclick="this.select()" oninput="debounceSaveTask('${data.id}')" onkeydown="if(event.key==='Enter') this.blur()">
+                <span class="delete-btn" onclick="deleteTask('${data.id}')">✕</span>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    function toggleTask(id) {
+        if(globalTasks[id]) {
+            globalTasks[id].completed = !globalTasks[id].completed;
+            updateGlobal('tasks', globalTasks);
+        }
+    }
+
+    function deleteTask(id) {
+        if(confirm("Eliminare questa attività?")) {
+            delete globalTasks[id];
+            updateGlobal('tasks', globalTasks);
+        }
+    }
+
+    function debounceSaveTask(id) {
+        clearTimeout(saveTimeouts['task_'+id]);
+        saveTimeouts['task_'+id] = setTimeout(() => {
+            const el = document.getElementById(id); if(!el) return;
+            const text = el.querySelector('.task-text').value;
+            if(globalTasks[id]) {
+                globalTasks[id].text = text;
+                updateGlobal('tasks', globalTasks);
+            }
+        }, 500);
     }
 
     // --- GRAFICI (Umore e Abitudini) ---
