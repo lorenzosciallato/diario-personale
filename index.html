@@ -60,7 +60,7 @@
         .acc-header:hover { background: #333; }
         .acc-content { padding: 15px; display: none; background: #1e1e1e; max-height: 500px; overflow-y: auto; }
         
-        /* Sub Accordion (Snippets) */
+        /* Sub Accordion (Snippets & Schemas) */
         .sub-acc-header { background: #2a2a2a; padding: 10px 15px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 5px; transition: 0.2s; }
         .sub-acc-header:hover { background: #333; }
         .sub-acc-content { padding: 10px; display: none; background: #1a1a1a; border: 1px solid var(--border); border-top: none; border-radius: 0 0 4px 4px; margin-top: -5px; margin-bottom: 10px; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; color: #ccc;}
@@ -94,7 +94,7 @@
         .check-btn.active { background: var(--success); border-color: var(--success); color: white; }
         .check-btn.active::after { content: '✓'; font-weight: bold; }
 
-        /* Toast Appunti Copiati */
+        /* Toast Appunti Copiati / Notifiche */
         #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: var(--success); color: #fff; text-align: center; border-radius: 8px; padding: 12px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; font-size: 0.95rem; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; }
         #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
 
@@ -168,6 +168,14 @@
         </div>
 
         <div class="accordion">
+            <div class="acc-header" onclick="toggleAcc('schemas-content')">
+                <span>⚔️ Sfida allo Schema</span><span>▼</span>
+            </div>
+            <div class="acc-content" id="schemas-content" style="padding: 15px;">
+                <div id="schemas-list"></div>
+            </div>
+        </div>
+        <div class="accordion">
             <div class="acc-header" onclick="toggleAcc('files-content')">
                 <span>📁 Cloud: Codice & File</span><span>▼</span>
             </div>
@@ -212,7 +220,6 @@
                 <button id="btn-save-journal" onclick="saveJournal()" style="background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s;">Salva Diario</button>
             </div>
 
-            <!-- ── THERAPIST BUTTONS ── -->
             <div class="therapist-row">
                 <div class="therapist-row-label">🧠 Apri con uno psicologo AI → il prompt verrà copiato, incollalo su Gemini</div>
                 <button class="th-btn" style="background:#c0392b; color:#fff;" onclick="openTherapist('schema')">🔴 Schema Therapy</button>
@@ -221,8 +228,7 @@
                 <button class="th-btn" style="background:#b7950b; color:#1a1a1a;" onclick="openTherapist('cbt')">🟡 CBT / Beck</button>
                 <button class="th-btn" style="background:#1e8449; color:#fff;" onclick="openTherapist('eft')">🟢 Attachment / EFT</button>
             </div>
-            <!-- ── END THERAPIST BUTTONS ── -->
-        </div>
+            </div>
 
         <div class="card">
             <h3 style="margin-bottom: 15px; font-size: 1.1rem;">✅ Cose da Fare</h3>
@@ -273,6 +279,15 @@
     let globalHabits = {};
     let globalSnippets = {}; 
     let globalTasks = {};
+    let globalSchemaChallenges = {}; // Nuova variabile per le sfide agli schemi
+
+    const schemaCategories = {
+        "🔴 1: Distacco e Rifiuto": ["Abbandono", "Sfiducia/Abuso", "Deprivazione Emotiva", "Inadeguatezza/Vergogna", "Isolamento Sociale"],
+        "🔵 2: Mancanza di Autonomia": ["Dipendenza", "Vulnerabilità", "Invischiamento", "Fallimento"],
+        "🟣 3: Limiti Compromessi": ["Pretese/Grandiosità", "Autodisciplina Insufficiente"],
+        "🟡 4: Eterodirezione": ["Sottomissione", "Autosacrificio", "Ricerca di Approvazione"],
+        "🟢 5: Ipervigilanza/Inibizione": ["Negatività/Pessimismo", "Inibizione Emotiva", "Standard Severi", "Punizione"]
+    };
 
     const moodEmojis = ["😭", "😢", "🙁", "😕", "😐", "🙂", "😊", "😁", "🥰", "🤩"];
 
@@ -483,6 +498,8 @@ TESTO DEL DIARIO DI OGGI:
         unsubscribeGlobal = ref.onSnapshot(doc => {
             const activeElement = document.activeElement;
             const isTypingTask = activeElement && activeElement.classList.contains('task-text');
+            // Gestione dei focus sulle textarea degli schemi per evitare riscritture mentre digiti
+            const isTypingSchema = activeElement && activeElement.id && activeElement.id.startsWith('txt_schema_');
 
             if(doc.exists) {
                 const d = doc.data();
@@ -491,14 +508,16 @@ TESTO DEL DIARIO DI OGGI:
                 if(d.habits) globalHabits = d.habits;
                 if(d.snippets) globalSnippets = d.snippets;
                 if(d.tasks) globalTasks = d.tasks;
+                if(d.schemaChallenges) globalSchemaChallenges = d.schemaChallenges;
             } else {
-                ref.set({ ideas: {}, files: {}, habits: {}, snippets: {}, tasks: {} }, {merge:true});
+                ref.set({ ideas: {}, files: {}, habits: {}, snippets: {}, tasks: {}, schemaChallenges: {} }, {merge:true});
             }
             renderIdeas(); 
             renderFiles();
             renderHabitsGlobal();
             renderSnippets();
             if (!isTypingTask) renderTasks();
+            if (!isTypingSchema) renderSchemaChallenges();
         });
     }
 
@@ -686,6 +705,64 @@ TESTO DEL DIARIO DI OGGI:
         });
     }
     
+    // --- SFIDA ALLO SCHEMA ---
+    function renderSchemaChallenges() {
+        const container = document.getElementById('schemas-list');
+        if(!container) return;
+        let html = '';
+        let catIndex = 0;
+        
+        for (const [category, schemas] of Object.entries(schemaCategories)) {
+            let catId = 'schema_cat_' + catIndex;
+            html += `
+                <div style="margin-bottom: 10px;">
+                    <div class="sub-acc-header" style="background:#222; color:var(--accent);" onclick="toggleSubAcc('${catId}')">
+                        <span>${category}</span><span>▼</span>
+                    </div>
+                    <div class="sub-acc-content" id="${catId}" style="display:none; padding:5px; background:transparent; border:none;">
+            `;
+            
+            schemas.forEach((schema, sIndex) => {
+                let schemaKey = 'schema_' + catIndex + '_' + sIndex;
+                let schemaId = 'schema_item_' + catIndex + '_' + sIndex;
+                let savedText = globalSchemaChallenges[schemaKey] || "";
+                
+                html += `
+                    <div style="margin-bottom: 8px;">
+                        <div class="sub-acc-header" style="font-size:0.85rem; padding:8px;" onclick="toggleSubAcc('${schemaId}')">
+                            <span>${schema}</span>
+                        </div>
+                        <div class="sub-acc-content" id="${schemaId}" style="display:none; padding:10px; background:#1a1a1a;">
+                            <textarea id="txt_${schemaKey}" placeholder="Qual è la tua sfida concreta a questo schema?" style="width:100%; height:80px; font-size:0.85rem; padding:8px; resize:vertical; margin-bottom:5px;">${savedText}</textarea>
+                            <button class="add-btn" style="margin-top:0; padding:6px; font-size:0.8rem;" onclick="saveSchemaChallenge('${schemaKey}')">Salva Sfida</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div></div>`;
+            catIndex++;
+        }
+        
+        // Sostituiamo il contenuto stando attenti a non perdere l'apertura se aggiorniamo (struttura base)
+        container.innerHTML = html;
+    }
+
+    function saveSchemaChallenge(key) {
+        const textEl = document.getElementById('txt_' + key);
+        if(!textEl) return;
+        globalSchemaChallenges[key] = textEl.value.trim();
+        updateGlobal('schemaChallenges', globalSchemaChallenges);
+        
+        const toast = document.getElementById("toast");
+        toast.innerText = "Sfida Salvata!";
+        toast.className = "show";
+        setTimeout(() => { 
+            toast.className = toast.className.replace("show", ""); 
+            setTimeout(() => { toast.innerText = "Appunti Copiati!"; }, 400); // Ripristina testo base
+        }, 2500);
+    }
+
     // --- SNIPPET DI TESTO / CODICE ---
     function addSnippet() {
         const titleEl = document.getElementById('snippet-title-input');
