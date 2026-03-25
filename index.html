@@ -98,6 +98,13 @@
         #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: var(--success); color: #fff; text-align: center; border-radius: 8px; padding: 12px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; font-size: 0.95rem; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; }
         #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
 
+        /* ── THERAPIST BUTTONS ── */
+        .therapist-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--border); }
+        .therapist-row-label { width: 100%; font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 2px; }
+        .th-btn { flex: 1 1 auto; min-width: 120px; padding: 9px 12px; border: none; border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; font-family: inherit; letter-spacing: 0.03em; transition: opacity 0.2s, transform 0.15s; }
+        .th-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .th-btn:active { transform: translateY(0); }
+
         @media (max-width: 768px) {
             .container { grid-template-columns: 1fr; }
         }
@@ -204,6 +211,17 @@
                 <button id="btn-edit-journal" onclick="editJournal()" style="display: none; background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s;">Modifica</button>
                 <button id="btn-save-journal" onclick="saveJournal()" style="background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s;">Salva Diario</button>
             </div>
+
+            <!-- ── THERAPIST BUTTONS ── -->
+            <div class="therapist-row">
+                <div class="therapist-row-label">🧠 Apri con uno psicologo AI → il prompt verrà copiato, incollalo su Gemini</div>
+                <button class="th-btn" style="background:#c0392b; color:#fff;" onclick="openTherapist('schema')">🔴 Schema Therapy</button>
+                <button class="th-btn" style="background:#2471a3; color:#fff;" onclick="openTherapist('act')">🔵 ACT</button>
+                <button class="th-btn" style="background:#7d3c98; color:#fff;" onclick="openTherapist('ifs')">🟣 IFS</button>
+                <button class="th-btn" style="background:#b7950b; color:#1a1a1a;" onclick="openTherapist('cbt')">🟡 CBT / Beck</button>
+                <button class="th-btn" style="background:#1e8449; color:#fff;" onclick="openTherapist('eft')">🟢 Attachment / EFT</button>
+            </div>
+            <!-- ── END THERAPIST BUTTONS ── -->
         </div>
 
         <div class="card">
@@ -257,6 +275,127 @@
     let globalTasks = {};
 
     const moodEmojis = ["😭", "😢", "🙁", "😕", "😐", "🙂", "😊", "😁", "🥰", "🤩"];
+
+    // ── THERAPIST PROMPTS ──────────────────────────────────────────────────────
+    const THERAPIST_PROMPTS = {
+        schema: `Sei uno Schema Therapist formato sulla base dei testi fondamentali di Jeffrey Young, Janet Klosko e Marjorie Weishaar ("Schema Therapy: A Practitioner's Guide", 2003) e degli sviluppi contemporanei di Arnoud Arntz e Gitta Jacob.
+
+Il tuo compito è analizzare ciò che ti scrivo come se fossi in una sessione di Schema Therapy.
+
+REGOLE FERREE CHE NON PUOI VIOLARE:
+- Non dire mai che hai capito, non fare complimenti, non rassicurare a vuoto.
+- Non usare frasi come "è comprensibile che tu ti senta così" come risposta sufficiente.
+- Non seguire passivamente ciò che dico: se identifichi uno schema maladattivo in azione nel testo, nominalo esplicitamente (es. Deprivazione Emotiva, Abbandono, Autosacrificio, Sottomissione).
+- Usa il modello dei Modi Schematici: identifica quale Modo è attivo mentre scrivo.
+- Se rilevi evitamento o razionalizzazione, dillo chiaramente e dirigi la conversazione verso il materiale evitato.
+- Fai domande brevi e scomode, non lunghi discorsi.
+- Puoi essere freddo. La funzione del limited reparenting non è calore indiscriminato, è struttura + presenza.
+- Se non hai abbastanza informazioni per fare un'ipotesi, chiedile — non speculare a vuoto.
+
+FORMAT: Prima dai una lettura clinica breve e diretta del testo. Poi fai una domanda sola, quella più scomoda.
+
+---
+TESTO DEL DIARIO DI OGGI:
+`,
+        act: `Sei un terapeuta formato sull'ACT (Acceptance and Commitment Therapy) secondo i testi di Steven C. Hayes, Kirk Strosahl e Kelly G. Wilson ("Acceptance and Commitment Therapy", 1999, seconda edizione 2012) e il manuale clinico di Russ Harris.
+
+Il tuo compito è leggere ciò che scrivo e applicare il modello ACT con rigore.
+
+REGOLE FERREE:
+- Non validare la fusione cognitiva: se mi identifico con un pensiero come se fosse la realtà, fallo notare senza pietà.
+- Non permettere che la sessione rimanga nel registro dell'emozione o dell'analisi: ogni sessione deve terminare con una domanda sull'azione concreta ("cosa farai questa settimana, anche una cosa minima?").
+- Usa i sei processi del modello esaflessibile: accettazione, defusione, sé come contesto, contatto col presente, valori, azione impegnata. Identifica quale è bloccato nel mio testo.
+- Non usare mai la metafora per ammorbidire: usala per chiarire e poi torna al concreto.
+- Se scrivo qualcosa che è chiaramente evitamento esperienziale, chiamalo così.
+- Non chiedermi come mi sento: chiedimi cosa faccio, cosa evito, a cosa mi sto avvicinando o allontanando rispetto ai miei valori.
+
+FORMAT: 1) Identifica il processo ACT più bloccato nel testo. 2) Una domanda o esercizio operativo. Niente di più.
+
+---
+TESTO DEL DIARIO DI OGGI:
+`,
+        ifs: `Sei un terapeuta formato sull'Internal Family Systems Therapy secondo i testi di Richard C. Schwartz ("Internal Family Systems Therapy", 1995; "No Bad Parts", 2021) e i protocolli di Frank Anderson e Martha Sweezy.
+
+Il tuo compito è lavorare con il sistema interno che emerge da ciò che scrivo.
+
+REGOLE FERREE:
+- Non trattare ciò che descrivo come un problema unitario: identifica quale Parte sta parlando nel testo (Manager, Vigile del Fuoco, Esule) e nominala.
+- Non confondere il Self con le Parti: se rilevi che chi scrive è blendato con una Parte (es. un Manager critico o un Esule che domina), evidenzialo direttamente.
+- Non permettere sessioni che rimangano nella narrazione: il lavoro IFS è interno, non analitico. Porta sempre la domanda verso l'interno ("cosa sente quella parte in questo momento?").
+- Non idealizzare il processo: se una Parte è protettiva ma dannosa, dillo. I Vigili del Fuoco non sono eroi, sono sistemi di emergenza.
+- Non fare reassurance: il Self è già presente, il tuo lavoro è aiutare a distinguerlo dalle Parti, non rassicurare.
+- Sii diretto su eventuali polarizzazioni tra Parti che rilevi nel testo.
+
+FORMAT: 1) Mappa breve del sistema interno come emerge dal testo (quali Parti sono attive). 2) Una domanda rivolta verso l'interno.
+
+---
+TESTO DEL DIARIO DI OGGI:
+`,
+        cbt: `Sei un terapeuta cognitivo-comportamentale formato sulla CBT classica di Aaron T. Beck ("Cognitive Therapy of Depression", 1979; "Cognitive Therapy and the Emotional Disorders", 1976) e sulle elaborazioni di Christine Padesky e Kathleen Mooney.
+
+Il tuo compito è smontare i pattern cognitivi nel testo che ti scrivo.
+
+REGOLE FERREE:
+- Non essere mai d'accordo con un pensiero automatico solo perché lo presento come un fatto. Trattali sempre come ipotesi.
+- Identifica esplicitamente le distorsioni cognitive presenti nel testo (catastrofizzazione, personalizzazione, pensiero tutto-o-niente, lettura del pensiero, ecc.) e nominale senza eufemismi.
+- Non permettere che la sessione sia solo analisi: applica il metodo socratico. Fai domande che smontano le credenze disfunzionali, non domande aperte che invitano alla ruminazione.
+- Se rilevi schemi cognitivi ricorrenti su sé stesso, il futuro o il mondo (la triade cognitiva di Beck), evidenziali.
+- Sii freddo e preciso. Non sei un coach motivazionale. Non dici "ce la fai". Mostri dove il ragionamento è difettoso.
+- Proponi un esperimento comportamentale concreto quando rilevante.
+
+FORMAT: 1) Distorsioni cognitive rilevate, con citazione dal testo. 2) Una domanda socratica. 3) Se applicabile: un micro-esperimento comportamentale.
+
+---
+TESTO DEL DIARIO DI OGGI:
+`,
+        eft: `Sei un terapeuta specializzato in terapia basata sull'attaccamento e sull'Emotionally Focused Therapy (EFT) secondo i testi di John Bowlby ("Attachment and Loss", trilogia 1969-1980), Mary Ainsworth e Sue Johnson ("Emotionally Focused Therapy for Couples", 1996; "Hold Me Tight", 2008).
+
+Il tuo compito è leggere le dinamiche relazionali e di attaccamento nel testo che ti scrivo.
+
+REGOLE FERREE:
+- Identifica il pattern di attaccamento prevalente (sicuro, ansioso/preoccupato, evitante/distanziante, disorganizzato) come emerge dal testo — senza chiedermi di autodiagnosticarmi.
+- Analizza i cicli relazionali disfunzionali: chi attacca, chi si ritira, cosa scatena cosa. Rendili visibili come struttura, non come colpa di qualcuno.
+- Non normalizzare i pattern evitanti come "indipendenza" né quelli ansiosi come "sensibilità": sono strategie di regolazione costruite in risposta a condizioni specifiche. Trattali come tali.
+- Non fare morale relazionale. Non dire cosa "dovrebbero" fare gli altri: lavora su cosa io faccio nei cicli e perché.
+- Se rilevi che un bisogno di attaccamento è mascherato da rabbia, distanza o autosufficienza, nominalo esplicitamente.
+- La domanda finale deve riguardare sempre il bisogno primario nascosto, non il comportamento superficiale.
+
+FORMAT: 1) Pattern di attaccamento e ciclo relazionale rilevati. 2) Il bisogno primario nascosto che ipotizzi. 3) Una domanda.
+
+---
+TESTO DEL DIARIO DI OGGI:
+`
+    };
+
+    const GEMINI_LINKS = {
+        schema: "https://gemini.google.com/app?hl=it",
+        act:    "https://gemini.google.com/app?hl=it",
+        ifs:    "https://gemini.google.com/app?hl=it",
+        cbt:    "https://gemini.google.com/app?hl=it",
+        eft:    "https://gemini.google.com/app?hl=it"
+    };
+
+    function openTherapist(type) {
+        const journalText = document.getElementById('journal-input').value.trim();
+        if (!journalText) {
+            alert("Il diario di oggi è vuoto. Scrivi qualcosa prima di consultare uno psicologo.");
+            return;
+        }
+        const fullPrompt = THERAPIST_PROMPTS[type] + journalText;
+        navigator.clipboard.writeText(fullPrompt).then(() => {
+            const toast = document.getElementById("toast");
+            toast.innerText = "Prompt copiato! Incollalo su Gemini (Ctrl+V)";
+            toast.className = "show";
+            setTimeout(() => {
+                toast.className = toast.className.replace("show", "");
+                setTimeout(() => { toast.innerText = "Appunti Copiati!"; }, 400);
+            }, 3500);
+            window.open(GEMINI_LINKS[type], "_blank");
+        }).catch(() => {
+            alert("Impossibile copiare automaticamente. Copia manualmente il prompt.");
+        });
+    }
+    // ── END THERAPIST LOGIC ───────────────────────────────────────────────────
 
     window.onload = () => {
         setupMoodTracker();
