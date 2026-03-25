@@ -282,11 +282,34 @@
     let globalSchemaChallenges = {}; // Nuova variabile per le sfide agli schemi
 
     const schemaCategories = {
-        "🔴 1: Distacco e Rifiuto": ["Abbandono", "Sfiducia/Abuso", "Deprivazione Emotiva", "Inadeguatezza/Vergogna", "Isolamento Sociale"],
-        "🔵 2: Mancanza di Autonomia": ["Dipendenza", "Vulnerabilità", "Invischiamento", "Fallimento"],
-        "🟣 3: Limiti Compromessi": ["Pretese/Grandiosità", "Autodisciplina Insufficiente"],
-        "🟡 4: Eterodirezione": ["Sottomissione", "Autosacrificio", "Ricerca di Approvazione"],
-        "🟢 5: Ipervigilanza/Inibizione": ["Negatività/Pessimismo", "Inibizione Emotiva", "Standard Severi", "Punizione"]
+        "🔴 1: Distacco e Rifiuto": [
+            { name: "Abbandono", desc: "Convinzione che le persone importanti ti lasceranno o sceglieranno qualcun altro." },
+            { name: "Sfiducia/Abuso", desc: "Aspettativa che gli altri ti faranno del male o ti useranno." },
+            { name: "Deprivazione Emotiva", desc: "Certezza che nessuno ti darà mai l'affetto o la comprensione di cui hai bisogno." },
+            { name: "Inadeguatezza/Vergogna", desc: "Sensazione di essere difettoso, sbagliato o 'non amabile'." },
+            { name: "Isolamento Sociale", desc: "Sentirsi esclusi dal resto del mondo, intrinsecamente diversi." }
+        ],
+        "🔵 2: Mancanza di Autonomia": [
+            { name: "Dipendenza", desc: "Credere di non poter gestire le responsabilità senza il costante aiuto altrui." },
+            { name: "Vulnerabilità", desc: "Paura esagerata che stia per accadere una catastrofe incontrollabile." },
+            { name: "Invischiamento", desc: "Coinvolgimento emotivo eccessivo con altri a scapito della propria identità." },
+            { name: "Fallimento", desc: "Convinzione di essere destinato a fallire o di essere meno capace degli altri." }
+        ],
+        "🟣 3: Limiti Compromessi": [
+            { name: "Pretese/Grandiosità", desc: "Sentirsi superiori e credere di avere diritto a privilegi speciali." },
+            { name: "Autodisciplina Insufficiente", desc: "Rifiuto di tollerare la frustrazione, porta a procrastinazione cronica." }
+        ],
+        "🟡 4: Eterodirezione": [
+            { name: "Sottomissione", desc: "Permettere agli altri di dominarti per evitare rabbia, ritorsioni o abbandono." },
+            { name: "Autosacrificio", desc: "Rinunciare ai propri bisogni per aiutare gli altri, spinti dal senso di colpa." },
+            { name: "Ricerca di Approvazione", desc: "Bisogno esagerato di attenzione e stima altrui per definire il proprio sé." }
+        ],
+        "🟢 5: Ipervigilanza/Inibizione": [
+            { name: "Negatività/Pessimismo", desc: "Focus costante sugli aspetti negativi della vita ignorando quelli positivi." },
+            { name: "Inibizione Emotiva", desc: "Blocco cronico delle emozioni per paura di perdere il controllo o essere criticati." },
+            { name: "Standard Severi", desc: "Sforzi enormi per raggiungere standard altissimi, perfezionismo." },
+            { name: "Punizione", desc: "Tendenza a essere intolleranti e punitivi verso gli errori propri e altrui." }
+        ]
     };
 
     const moodEmojis = ["😭", "😢", "🙁", "😕", "😐", "🙂", "😊", "😁", "🥰", "🤩"];
@@ -705,7 +728,7 @@ TESTO DEL DIARIO DI OGGI:
         });
     }
     
-    // --- SFIDA ALLO SCHEMA ---
+// --- SFIDA ALLO SCHEMA ---
     function renderSchemaChallenges() {
         const container = document.getElementById('schemas-list');
         if(!container) return;
@@ -722,7 +745,7 @@ TESTO DEL DIARIO DI OGGI:
                     <div class="sub-acc-content" id="${catId}" style="display:none; padding:5px; background:transparent; border:none;">
             `;
             
-            schemas.forEach((schema, sIndex) => {
+            schemas.forEach((schemaObj, sIndex) => {
                 let schemaKey = 'schema_' + catIndex + '_' + sIndex;
                 let schemaId = 'schema_item_' + catIndex + '_' + sIndex;
                 let savedText = globalSchemaChallenges[schemaKey] || "";
@@ -730,9 +753,10 @@ TESTO DEL DIARIO DI OGGI:
                 html += `
                     <div style="margin-bottom: 8px;">
                         <div class="sub-acc-header" style="font-size:0.85rem; padding:8px;" onclick="toggleSubAcc('${schemaId}')">
-                            <span>${schema}</span>
+                            <span>${schemaObj.name}</span>
                         </div>
                         <div class="sub-acc-content" id="${schemaId}" style="display:none; padding:10px; background:#1a1a1a;">
+                            <p style="font-size:0.8rem; color:#888; margin-bottom:10px; font-style:italic; line-height:1.4;">${schemaObj.desc}</p>
                             <textarea id="txt_${schemaKey}" placeholder="Qual è la tua sfida concreta a questo schema?" style="width:100%; height:80px; font-size:0.85rem; padding:8px; resize:vertical; margin-bottom:5px;">${savedText}</textarea>
                             <button class="add-btn" style="margin-top:0; padding:6px; font-size:0.8rem;" onclick="saveSchemaChallenge('${schemaKey}')">Salva Sfida</button>
                         </div>
@@ -744,7 +768,6 @@ TESTO DEL DIARIO DI OGGI:
             catIndex++;
         }
         
-        // Sostituiamo il contenuto stando attenti a non perdere l'apertura se aggiorniamo (struttura base)
         container.innerHTML = html;
     }
 
