@@ -222,7 +222,6 @@
 
             <div class="therapist-row">
                 <div class="therapist-row-label">🧠 Apri con uno psicologo AI → il prompt verrà copiato, incollalo su Gemini</div>
-                <button class="th-btn" style="background:#c0392b; color:#fff;" onclick="openTherapist('schema')">🔴 Schema Therapy</button>
                 <button class="th-btn" style="background:#2471a3; color:#fff;" onclick="openTherapist('act')">🔵 ACT</button>
                 <button class="th-btn" style="background:#7d3c98; color:#fff;" onclick="openTherapist('ifs')">🟣 IFS</button>
                 <button class="th-btn" style="background:#b7950b; color:#1a1a1a;" onclick="openTherapist('cbt')">🟡 CBT / Beck</button>
@@ -279,7 +278,7 @@
     let globalHabits = {};
     let globalSnippets = {}; 
     let globalTasks = {};
-    let globalSchemaChallenges = {}; // Nuova variabile per le sfide agli schemi
+    let globalSchemaChallenges = {}; 
 
     const schemaCategories = {
         "🔴 1: Distacco e Rifiuto": [
@@ -316,27 +315,6 @@
 
     // ── THERAPIST PROMPTS ──────────────────────────────────────────────────────
     const THERAPIST_PROMPTS = {
-        schema: `Sei uno Schema Therapist formato sulla base dei testi fondamentali di Jeffrey Young, Janet Klosko e Marjorie Weishaar ("Schema Therapy: A Practitioner's Guide", 2003) e degli sviluppi contemporanei di Arnoud Arntz e Gitta Jacob.
-
-Il tuo compito è analizzare ciò che ti scrivo come se fossi in una sessione di Schema Therapy.
-
-REGOLE FERREE CHE NON PUOI VIOLARE:
-- Non dire mai che hai capito, non fare complimenti, non rassicurare a vuoto.
-- Non usare frasi come "è comprensibile che tu ti senta così" come risposta sufficiente.
-- Non seguire passivamente ciò che dico: se identifichi uno schema maladattivo in azione nel testo, nominalo esplicitamente (es. Deprivazione Emotiva, Abbandono, Autosacrificio, Sottomissione).
-- Usa il modello dei Modi Schematici: identifica quale Modo è attivo mentre scrivo.
-- Se rilevi evitamento o razionalizzazione, dillo chiaramente e dirigi la conversazione verso il materiale evitato.
-- Fai domande brevi e scomode, non lunghi discorsi.
-- Puoi essere freddo. La funzione del limited reparenting non è calore indiscriminato, è struttura + presenza.
-- Se non hai abbastanza informazioni per fare un'ipotesi, chiedile — non speculare a vuoto.
-
-LUNGHEZZA: Le tue risposte devono essere lunghe ed esaustive. Non troncare l'analisi. Ogni punto del FORMAT va sviluppato in profondità.
-
-FORMAT: Prima dai una lettura clinica approfondita del testo. Poi fai una domanda sola, quella più scomoda.
-
----
-TESTO DEL DIARIO DI OGGI:
-`,
         act: `Sei un terapeuta formato sull'ACT (Acceptance and Commitment Therapy) secondo i testi di Steven C. Hayes, Kirk Strosahl e Kelly G. Wilson ("Acceptance and Commitment Therapy", 1999, seconda edizione 2012) e il manuale clinico di Russ Harris.
 
 Il tuo compito è leggere ciò che scrivo e applicare il modello ACT con rigore.
@@ -416,7 +394,6 @@ TESTO DEL DIARIO DI OGGI:
     };
 
     const GEMINI_LINKS = {
-        schema: "https://gemini.google.com/app/9af2c359258e1541?hl=it",
         act:    "https://gemini.google.com/app/fbd2ec0b4a0ed814?hl=it",
         ifs:    "https://gemini.google.com/app/03d3fd6aa68ea02a?hl=it",
         cbt:    "https://gemini.google.com/app/3993ea797fb7e960?hl=it",
