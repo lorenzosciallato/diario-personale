@@ -1,1019 +1,117 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lorenzo OS | Diario & Produttività</title>
-    <meta name="theme-color" content="#121212">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <style>
-        :root {
-            --primary: #e0e6ed; --accent: #5dade2; --bg: #121212; --card: #1e1e1e; 
-            --done: #5c6b7a; --highlight: #f39c12; --danger: #e74c3c; --success: #27ae60; --border: #333;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background-color: var(--bg); font-family: 'Inter', sans-serif; color: var(--primary); padding: 20px; scroll-behavior: smooth; }
-        
-        .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
-        
-        header { grid-column: 1 / -1; padding: 15px 20px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header-right { display: flex; gap: 15px; align-items: center; }
-        
-        #logout-btn { background: transparent; border: 2px solid var(--danger); color: var(--danger); padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s; display: none; }
-        #logout-btn:hover { background: var(--danger); color: white; }
-        
-        h1 { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--primary); }
-        
-        .card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); height: fit-content; margin-bottom: 20px; }
-        
-        input, select, textarea { background: #2a2a2a; color: var(--primary); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-family: inherit; }
-        input:focus, textarea:focus { outline: none; border-color: var(--accent); }
-
-        /* Calendar */
-        .calendar-controls { display: flex; justify-content: space-between; margin-bottom: 15px; padding-top: 10px;}
-        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
-        .day { padding: 10px 5px; cursor: pointer; border-radius: 5px; transition: 0.2s; font-size: 0.9rem; border: 1px solid transparent; }
-        .day:hover { background: #333; }
-        .day.selected { background: var(--accent); color: white; font-weight: bold; }
-        .day.today { border: 2px solid var(--highlight); }
-        .day-name { font-weight: bold; font-size: 0.7rem; text-transform: uppercase; color: var(--accent); padding-bottom: 10px; }
-
-        /* UI Elements */
-        .add-btn { width: 100%; padding: 10px; background: #2a2a2a; border: 1px dashed var(--accent); color: var(--accent); cursor: pointer; border-radius: 8px; font-weight: 600; transition: 0.3s; margin-top: 10px; }
-        .add-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
-        .delete-btn { color: white; background: var(--danger); cursor: pointer; font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size:0.8rem; border: none; }
-        
-        .list-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid var(--border); gap: 10px; background: transparent; }
-
-        /* Accordions */
-        .accordion { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 15px; background: var(--card); }
-        .acc-header { background: #2a2a2a; padding: 15px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; border-bottom: 1px solid var(--border); transition: 0.2s;}
-        .acc-header:hover { background: #333; }
-        .acc-content { padding: 15px; display: none; background: #1e1e1e; max-height: 500px; overflow-y: auto; }
-        
-        /* Sub Accordion (Snippets & Schemas) */
-        .sub-acc-header { background: #2a2a2a; padding: 10px 15px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 5px; transition: 0.2s; }
-        .sub-acc-header:hover { background: #333; }
-        .sub-acc-content { padding: 10px; display: none; background: #1a1a1a; border: 1px solid var(--border); border-top: none; border-radius: 0 0 4px 4px; margin-top: -5px; margin-bottom: 10px; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; color: #ccc;}
-
-        /* Mood Tracker */
-        .mood-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; background: #2a2a2a; padding: 15px; border-radius: 8px; justify-content: space-between; align-items: center;}
-        .mood-label { display: flex; flex-direction: column; align-items: center; cursor: pointer; font-size: 1.2rem; padding: 5px; border-radius: 8px; transition: 0.2s;}
-        .mood-label:hover { background: #444; }
-        .mood-label input { display: none; }
-        .mood-label span { font-size: 0.75rem; color: #888; margin-top: 4px; font-weight: bold;}
-        .mood-label input:checked + div { transform: scale(1.3); }
-        .mood-label input:checked ~ span { color: var(--accent); }
-
-        /* Journaling */
-        .journal-area { width: 100%; height: 350px; padding: 20px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.05rem; resize: vertical; line-height: 1.6; background: #1a1a1a; transition: 0.3s;}
-        .journal-area:read-only { opacity: 0.6; cursor: not-allowed; border-color: transparent; background: #1e1e1e;}
-
-        /* Files & Snippets */
-        .saved-item { background: #2a2a2a; padding: 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
-        .file-link { color: var(--accent); text-decoration: none; word-break: break-all; font-size: 0.85rem;}
-        .file-link:hover { text-decoration: underline; }
-        .section-title { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; margin-top: 15px; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 5px;}
-
-        /* Tasks (Cose da fare) */
-        .task-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px dashed var(--border); gap: 10px; }
-        .task-item:last-child { border-bottom: none; }
-        .task-text { flex-grow: 1; padding: 5px; border: 1px solid transparent; border-radius: 4px; font-size: 0.95rem; width: 100%; background: transparent; color: var(--primary); }
-        .task-text:focus { outline: none; border-color: var(--accent); background: #2a2a2a; }
-        .task-text.completed { text-decoration: line-through; color: var(--done); opacity: 0.6;}
-        .check-btn { width: 22px; height: 22px; border-radius: 4px; border: 2px solid var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.2s;}
-        .check-btn.active { background: var(--success); border-color: var(--success); color: white; }
-        .check-btn.active::after { content: '✓'; font-weight: bold; }
-
-        /* Toast Appunti Copiati / Notifiche */
-        #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: var(--success); color: #fff; text-align: center; border-radius: 8px; padding: 12px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; font-size: 0.95rem; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; }
-        #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
-
-        /* ── THERAPIST BUTTONS ── */
-        .therapist-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--border); }
-        .therapist-row-label { width: 100%; font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 2px; }
-        .th-btn { flex: 1 1 auto; min-width: 120px; padding: 9px 12px; border: none; border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; font-family: inherit; letter-spacing: 0.03em; transition: opacity 0.2s, transform 0.15s; }
-        .th-btn:hover { opacity: 0.85; transform: translateY(-1px); }
-        .th-btn:active { transform: translateY(0); }
-
-        @media (max-width: 768px) {
-            .container { grid-template-columns: 1fr; }
-        }
-    </style>
-</head>
-<body>
-
+<!DOCTYPE html><html lang="it"><head>    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>Lorenzo OS | Diario & Produttività</title>    <meta name="theme-color" content="#121212">        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">        <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>        :root {            --primary: #e0e6ed; --accent: #5dade2; --bg: #121212; --card: #1e1e1e;             --done: #5c6b7a; --highlight: #f39c12; --danger: #e74c3c; --success: #27ae60; --border: #333;        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }        body { background-color: var(--bg); font-family: 'Inter', sans-serif; color: var(--primary); padding: 20px; scroll-behavior: smooth; }                .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 320px 1fr; gap: 20px; }                header { grid-column: 1 / -1; padding: 15px 20px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }        .header-right { display: flex; gap: 15px; align-items: center; }                #logout-btn { background: transparent; border: 2px solid var(--danger); color: var(--danger); padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s; display: none; }        #logout-btn:hover { background: var(--danger); color: white; }                h1 { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--primary); }                .card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); height: fit-content; margin-bottom: 20px; }                input, select, textarea { background: #2a2a2a; color: var(--primary); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-family: inherit; }        input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+        /* Calendar */        .calendar-controls { display: flex; justify-content: space-between; margin-bottom: 15px; padding-top: 10px;}        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }        .day { padding: 10px 5px; cursor: pointer; border-radius: 5px; transition: 0.2s; font-size: 0.9rem; border: 1px solid transparent; }        .day:hover { background: #333; }        .day.selected { background: var(--accent); color: white; font-weight: bold; }        .day.today { border: 2px solid var(--highlight); }        .day-name { font-weight: bold; font-size: 0.7rem; text-transform: uppercase; color: var(--accent); padding-bottom: 10px; }
+        /* UI Elements */        .add-btn { width: 100%; padding: 10px; background: #2a2a2a; border: 1px dashed var(--accent); color: var(--accent); cursor: pointer; border-radius: 8px; font-weight: 600; transition: 0.3s; margin-top: 10px; }        .add-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }        .delete-btn { color: white; background: var(--danger); cursor: pointer; font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size:0.8rem; border: none; }                .list-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid var(--border); gap: 10px; background: transparent; }
+        /* Accordions */        .accordion { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 15px; background: var(--card); }        .acc-header { background: #2a2a2a; padding: 15px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; border-bottom: 1px solid var(--border); transition: 0.2s;}        .acc-header:hover { background: #333; }        .acc-content { padding: 15px; display: none; background: #1e1e1e; max-height: 500px; overflow-y: auto; }                /* Sub Accordion (Snippets & Schemas) */        .sub-acc-header { background: #2a2a2a; padding: 10px 15px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 5px; transition: 0.2s; }        .sub-acc-header:hover { background: #333; }        .sub-acc-content { padding: 10px; display: none; background: #1a1a1a; border: 1px solid var(--border); border-top: none; border-radius: 0 0 4px 4px; margin-top: -5px; margin-bottom: 10px; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; color: #ccc;}
+        /* Mood Tracker */        .mood-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; background: #2a2a2a; padding: 15px; border-radius: 8px; justify-content: space-between; align-items: center;}        .mood-label { display: flex; flex-direction: column; align-items: center; cursor: pointer; font-size: 1.2rem; padding: 5px; border-radius: 8px; transition: 0.2s;}        .mood-label:hover { background: #444; }        .mood-label input { display: none; }        .mood-label span { font-size: 0.75rem; color: #888; margin-top: 4px; font-weight: bold;}        .mood-label input:checked + div { transform: scale(1.3); }        .mood-label input:checked ~ span { color: var(--accent); }
+        /* Journaling */        .journal-area { width: 100%; height: 350px; padding: 20px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.05rem; resize: vertical; line-height: 1.6; background: #1a1a1a; transition: 0.3s;}        .journal-area:read-only { opacity: 0.6; cursor: not-allowed; border-color: transparent; background: #1e1e1e;}
+        /* Files & Snippets */        .saved-item { background: #2a2a2a; padding: 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}        .file-link { color: var(--accent); text-decoration: none; word-break: break-all; font-size: 0.85rem;}        .file-link:hover { text-decoration: underline; }        .section-title { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; margin-top: 15px; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 5px;}
+        /* Tasks (Cose da fare) */        .task-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px dashed var(--border); gap: 10px; }        .task-item:last-child { border-bottom: none; }        .task-text { flex-grow: 1; padding: 5px; border: 1px solid transparent; border-radius: 4px; font-size: 0.95rem; width: 100%; background: transparent; color: var(--primary); }        .task-text:focus { outline: none; border-color: var(--accent); background: #2a2a2a; }        .task-text.completed { text-decoration: line-through; color: var(--done); opacity: 0.6;}        .check-btn { width: 22px; height: 22px; border-radius: 4px; border: 2px solid var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.2s;}        .check-btn.active { background: var(--success); border-color: var(--success); color: white; }        .check-btn.active::after { content: '✓'; font-weight: bold; }
+        /* Toast Appunti Copiati / Notifiche */        #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: var(--success); color: #fff; text-align: center; border-radius: 8px; padding: 12px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; font-size: 0.95rem; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; }        #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
+        /* ── THERAPIST BUTTONS ── */        .therapist-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--border); }        .therapist-row-label { width: 100%; font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 2px; }        .th-btn { flex: 1 1 auto; min-width: 120px; padding: 9px 12px; border: none; border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; font-family: inherit; letter-spacing: 0.03em; transition: opacity 0.2s, transform 0.15s; }        .th-btn:hover { opacity: 0.85; transform: translateY(-1px); }        .th-btn:active { transform: translateY(0); }
+        @media (max-width: 768px) {            .container { grid-template-columns: 1fr; }        }    </style></head><body>
 <div id="toast">Appunti Copiati!</div>
-
-<div id="login-screen" style="position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-    <div class="card" style="width: 320px; text-align: center;">
-        <h2 style="margin-bottom: 25px;">Lorenzo OS</h2>
-        <input type="email" id="email-input" placeholder="La tua Email" style="width: 100%; margin-bottom: 15px;">
-        <input type="password" id="password-input" placeholder="Password" style="width: 100%; margin-bottom: 20px;">
-        <button onclick="signIn()" style="width: 100%; padding: 12px; margin-bottom: 15px; background:var(--success); color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">ACCEDI</button>
-        <button onclick="registerUser()" style="width: 100%; padding: 10px; background: transparent; border: 1px solid var(--accent); color: var(--primary); border-radius: 6px; cursor: pointer; font-weight: bold;">CREA ACCOUNT</button>
-        <p id="login-error" style="color: var(--danger); margin-top: 15px; font-size: 0.9rem; font-weight: bold;"></p>
+<div id="login-screen" style="position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center;">    <div class="card" style="width: 320px; text-align: center;">        <h2 style="margin-bottom: 25px;">Lorenzo OS</h2>        <input type="email" id="email-input" placeholder="La tua Email" style="width: 100%; margin-bottom: 15px;">        <input type="password" id="password-input" placeholder="Password" style="width: 100%; margin-bottom: 20px;">        <button onclick="signIn()" style="width: 100%; padding: 12px; margin-bottom: 15px; background:var(--success); color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">ACCEDI</button>        <button onclick="registerUser()" style="width: 100%; padding: 10px; background: transparent; border: 1px solid var(--accent); color: var(--primary); border-radius: 6px; cursor: pointer; font-weight: bold;">CREA ACCOUNT</button>        <p id="login-error" style="color: var(--danger); margin-top: 15px; font-size: 0.9rem; font-weight: bold;"></p>    </div></div>
+<header>    <h1 id="main-title">Caricamento...</h1>    <div class="header-right">        <button id="logout-btn" onclick="signOut()">Esci dal sistema</button>    </div></header>
+<div class="container">    <div class="side-panel">                <div class="card" style="padding: 15px;">            <h3 style="margin-bottom: 10px; font-size: 1.1rem;">📅 Calendario</h3>            <div class="calendar-controls">                <select id="month-select" onchange="renderCalendar()"></select>                <select id="year-select" onchange="renderCalendar()"></select>            </div>            <div class="days-grid" id="calendar-grid"></div>        </div>
+        <div class="accordion" style="margin-top:0;">            <div class="acc-header" onclick="toggleAcc('habits-content')">                <span>🔄 Abitudini (Tracker)</span><span>▼</span>            </div>            <div class="acc-content" id="habits-content" style="display:block; padding: 10px;">                <div id="habits-list"></div>                <button class="add-btn" onclick="addHabit()" style="padding:8px; font-size:0.85rem;">+ Nuova Abitudine</button>            </div>        </div>
+        <div class="accordion">            <div class="acc-header" onclick="toggleAcc('ideas-content')">                <span>💡 Idee (Globali)</span><span>▼</span>            </div>            <div class="acc-content" id="ideas-content" style="padding: 10px;">                <div style="display: flex; gap: 5px; margin-bottom: 10px;">                    <input type="text" id="new-idea-input" placeholder="Scrivi un'idea..." style="flex: 1; padding: 8px; font-size: 0.85rem;" onkeydown="if(event.key==='Enter') addIdea()">                    <button onclick="addIdea()" style="background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Salva</button>                </div>                <div id="ideas-list"></div>            </div>        </div>
+        <div class="accordion">            <div class="acc-header" onclick="toggleAcc('schemas-content')">                <span>⚔️ Sfida allo Schema</span><span>▼</span>            </div>            <div class="acc-content" id="schemas-content" style="padding: 15px;">                <div id="schemas-list"></div>            </div>        </div>        <div class="accordion">            <div class="acc-header" onclick="toggleAcc('files-content')">                <span>📁 Cloud: Codice & File</span><span>▼</span>            </div>            <div class="acc-content" id="files-content" style="padding: 15px;">                                <div class="section-title" style="margin-top: 0;">📝 Snippet di Testo / Codice</div>                <input type="text" id="snippet-title-input" placeholder="Titolo del testo/codice..." style="width: 100%; padding: 8px; font-size: 0.85rem; margin-bottom: 5px;">                <textarea id="snippet-content-input" placeholder="Incolla qui il tuo codice HTML, appunti, ecc..." style="width: 100%; height: 80px; padding: 8px; font-size: 0.85rem; resize: vertical; margin-bottom: 5px;"></textarea>                <button onclick="addSnippet()" class="add-btn" style="margin-top: 0; padding: 8px; margin-bottom: 15px; border-style: solid; background: #222;">Salva Snippet</button>                                <div id="snippets-list" style="margin-bottom: 25px;"></div>
+                <div class="section-title">📎 File Allegati (PDF, Immagini...)</div>                <div style="display: flex; flex-direction: column; gap: 8px;">                    <input type="text" id="file-name-input" placeholder="Nome personalizzato (opzionale)" style="width: 100%; padding: 8px; font-size: 0.85rem;">                    <label for="file-upload" class="add-btn" style="margin: 0; text-align: center; border-style: solid; background: #222;">Scegli e Carica File</label>                    <input type="file" id="file-upload" style="display: none;" onchange="uploadFile(event)">                    <p id="upload-status" style="font-size: 0.8rem; color: var(--highlight); margin-top: 5px; display: none;">Caricamento in corso...</p>                </div>                <div id="files-list" style="margin-top: 10px;"></div>
+            </div>        </div>
     </div>
-</div>
+    <div class="main-content">                <div class="card" style="border-top: 4px solid var(--accent);">            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px;">                <h2>📖 Sessione del <span id="current-selection-date" style="color: var(--accent);"></span></h2>            </div>                        <div class="mood-container" id="mood-selector">                <span style="font-weight: bold; margin-right: 10px;">Umore:</span>            </div>
 
-<header>
-    <h1 id="main-title">Caricamento...</h1>
-    <div class="header-right">
-        <button id="logout-btn" onclick="signOut()">Esci dal sistema</button>
-    </div>
-</header>
+            <h3 style="margin-top: 5px; margin-bottom: 10px; font-size: 1.1rem;">📝 Diario</h3>
+            <textarea id="journal-input" class="journal-area" placeholder="Scrivi qui i tuoi pensieri..." style="height: 250px;"></textarea>                        <div style="display: flex; gap: 10px; margin-top: 15px; margin-bottom: 25px; justify-content: flex-end;">                <button id="btn-edit-journal" onclick="editJournal()" style="display: none; background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s;">Modifica Diario</button>                <button id="btn-save-journal" onclick="saveJournal()" style="background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s;">Salva Diario</button>            </div>
 
-<div class="container">
-    <div class="side-panel">
-        
-        <div class="card" style="padding: 15px;">
-            <h3 style="margin-bottom: 10px; font-size: 1.1rem;">📅 Calendario</h3>
-            <div class="calendar-controls">
-                <select id="month-select" onchange="renderCalendar()"></select>
-                <select id="year-select" onchange="renderCalendar()"></select>
-            </div>
-            <div class="days-grid" id="calendar-grid"></div>
-        </div>
+            <h3 style="margin-bottom: 10px; font-size: 1.1rem;">🙏 Diario della gratitudine</h3>
+            <textarea id="gratitude-input" class="journal-area" placeholder="Cosa ti rende grato oggi?" style="height: 150px;"></textarea>                        <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end;">                <button id="btn-edit-gratitude" onclick="editGratitude()" style="display: none; background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s;">Modifica Gratitudine</button>                <button id="btn-save-gratitude" onclick="saveGratitude()" style="background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s;">Salva Gratitudine</button>            </div>
 
-        <div class="accordion" style="margin-top:0;">
-            <div class="acc-header" onclick="toggleAcc('habits-content')">
-                <span>🔄 Abitudini (Tracker)</span><span>▼</span>
-            </div>
-            <div class="acc-content" id="habits-content" style="display:block; padding: 10px;">
-                <div id="habits-list"></div>
-                <button class="add-btn" onclick="addHabit()" style="padding:8px; font-size:0.85rem;">+ Nuova Abitudine</button>
-            </div>
-        </div>
-
-        <div class="accordion">
-            <div class="acc-header" onclick="toggleAcc('ideas-content')">
-                <span>💡 Idee (Globali)</span><span>▼</span>
-            </div>
-            <div class="acc-content" id="ideas-content" style="padding: 10px;">
-                <div style="display: flex; gap: 5px; margin-bottom: 10px;">
-                    <input type="text" id="new-idea-input" placeholder="Scrivi un'idea..." style="flex: 1; padding: 8px; font-size: 0.85rem;" onkeydown="if(event.key==='Enter') addIdea()">
-                    <button onclick="addIdea()" style="background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Salva</button>
-                </div>
-                <div id="ideas-list"></div>
-            </div>
-        </div>
-
-        <div class="accordion">
-            <div class="acc-header" onclick="toggleAcc('schemas-content')">
-                <span>⚔️ Sfida allo Schema</span><span>▼</span>
-            </div>
-            <div class="acc-content" id="schemas-content" style="padding: 15px;">
-                <div id="schemas-list"></div>
-            </div>
-        </div>
-        <div class="accordion">
-            <div class="acc-header" onclick="toggleAcc('files-content')">
-                <span>📁 Cloud: Codice & File</span><span>▼</span>
-            </div>
-            <div class="acc-content" id="files-content" style="padding: 15px;">
-                
-                <div class="section-title" style="margin-top: 0;">📝 Snippet di Testo / Codice</div>
-                <input type="text" id="snippet-title-input" placeholder="Titolo del testo/codice..." style="width: 100%; padding: 8px; font-size: 0.85rem; margin-bottom: 5px;">
-                <textarea id="snippet-content-input" placeholder="Incolla qui il tuo codice HTML, appunti, ecc..." style="width: 100%; height: 80px; padding: 8px; font-size: 0.85rem; resize: vertical; margin-bottom: 5px;"></textarea>
-                <button onclick="addSnippet()" class="add-btn" style="margin-top: 0; padding: 8px; margin-bottom: 15px; border-style: solid; background: #222;">Salva Snippet</button>
-                
-                <div id="snippets-list" style="margin-bottom: 25px;"></div>
-
-                <div class="section-title">📎 File Allegati (PDF, Immagini...)</div>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <input type="text" id="file-name-input" placeholder="Nome personalizzato (opzionale)" style="width: 100%; padding: 8px; font-size: 0.85rem;">
-                    <label for="file-upload" class="add-btn" style="margin: 0; text-align: center; border-style: solid; background: #222;">Scegli e Carica File</label>
-                    <input type="file" id="file-upload" style="display: none;" onchange="uploadFile(event)">
-                    <p id="upload-status" style="font-size: 0.8rem; color: var(--highlight); margin-top: 5px; display: none;">Caricamento in corso...</p>
-                </div>
-                <div id="files-list" style="margin-top: 10px;"></div>
-
-            </div>
-        </div>
-
-    </div>
-
-    <div class="main-content">
-        
-        <div class="card" style="border-top: 4px solid var(--accent);">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px;">
-                <h2>📖 Diario del <span id="current-selection-date" style="color: var(--accent);"></span></h2>
-            </div>
-            
-            <div class="mood-container" id="mood-selector">
-                <span style="font-weight: bold; margin-right: 10px;">Umore:</span>
-            </div>
-
-            <textarea id="journal-input" class="journal-area" placeholder="Scrivi qui i tuoi pensieri..."></textarea>
-            
-            <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end;">
-                <button id="btn-edit-journal" onclick="editJournal()" style="display: none; background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s;">Modifica</button>
-                <button id="btn-save-journal" onclick="saveJournal()" style="background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s;">Salva Diario</button>
-            </div>
-
-            <div class="therapist-row">
-                <div class="therapist-row-label">🧠 Apri con uno psicologo AI → il prompt verrà copiato, incollalo su Gemini</div>
-                <button class="th-btn" style="background:#2471a3; color:#fff;" onclick="openTherapist('act')">🔵 ACT</button>
-                <button class="th-btn" style="background:#7d3c98; color:#fff;" onclick="openTherapist('ifs')">🟣 IFS</button>
-                <button class="th-btn" style="background:#b7950b; color:#1a1a1a;" onclick="openTherapist('cbt')">🟡 CBT / Beck</button>
-                <button class="th-btn" style="background:#1e8449; color:#fff;" onclick="openTherapist('eft')">🟢 Attachment / EFT</button>
-            </div>
-            </div>
-
-        <div class="card">
-            <h3 style="margin-bottom: 15px; font-size: 1.1rem;">✅ Cose da Fare</h3>
-            <div id="task-list"></div>
-            <button class="add-btn" onclick="addNewTask()">+ Aggiungi nuova attività</button>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div class="card" style="margin-bottom: 0;">
-                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">📈 Umore Mensile</h3>
-                <canvas id="moodChart" width="400" height="200"></canvas>
-            </div>
-            <div class="card" style="margin-bottom: 0;">
-                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">📊 Completamento Abitudini</h3>
-                <canvas id="habitsChart" width="400" height="200"></canvas>
-            </div>
-        </div>
-
-    </div>
-</div>
-
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBkcn-7219QYy-o_-bor1UfL6LHsHII62c",
-        authDomain: "diario-journal.firebaseapp.com",
-        projectId: "diario-journal",
-        storageBucket: "diario-journal.firebasestorage.app",
-        messagingSenderId: "677181579601",
-        appId: "1:677181579601:web:3cc417033164139f40f370"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const storage = firebase.storage();
-
-    const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
-    let selectedDateKey = ""; 
-    let currentUser = null;
-    let unsubscribeSnapshot = null; 
-    let unsubscribeGlobal = null;
-    let moodChartInstance = null;
-    let habitsChartInstance = null;
-    const saveTimeouts = {}; 
-
-    let globalIdeas = {};
-    let globalFiles = {};
-    let globalHabits = {};
-    let globalSnippets = {}; 
-    let globalTasks = {};
-    let globalSchemaChallenges = {}; 
-
-    const schemaCategories = {
-        "🔴 1: Distacco e Rifiuto": [
-            { name: "Abbandono", desc: "Convinzione che le persone importanti ti lasceranno o sceglieranno qualcun altro." },
-            { name: "Sfiducia/Abuso", desc: "Aspettativa che gli altri ti faranno del male o ti useranno." },
-            { name: "Deprivazione Emotiva", desc: "Certezza che nessuno ti darà mai l'affetto o la comprensione di cui hai bisogno." },
-            { name: "Inadeguatezza/Vergogna", desc: "Sensazione di essere difettoso, sbagliato o 'non amabile'." },
-            { name: "Isolamento Sociale", desc: "Sentirsi esclusi dal resto del mondo, intrinsecamente diversi." }
-        ],
-        "🔵 2: Mancanza di Autonomia": [
-            { name: "Dipendenza", desc: "Credere di non poter gestire le responsabilità senza il costante aiuto altrui." },
-            { name: "Vulnerabilità", desc: "Paura esagerata che stia per accadere una catastrofe incontrollabile." },
-            { name: "Invischiamento", desc: "Coinvolgimento emotivo eccessivo con altri a scapito della propria identità." },
-            { name: "Fallimento", desc: "Convinzione di essere destinato a fallire o di essere meno capace degli altri." }
-        ],
-        "🟣 3: Limiti Compromessi": [
-            { name: "Pretese/Grandiosità", desc: "Sentirsi superiori e credere di avere diritto a privilegi speciali." },
-            { name: "Autodisciplina Insufficiente", desc: "Rifiuto di tollerare la frustrazione, porta a procrastinazione cronica." }
-        ],
-        "🟡 4: Eterodirezione": [
-            { name: "Sottomissione", desc: "Permettere agli altri di dominarti per evitare rabbia, ritorsioni o abbandono." },
-            { name: "Autosacrificio", desc: "Rinunciare ai propri bisogni per aiutare gli altri, spinti dal senso di colpa." },
-            { name: "Ricerca di Approvazione", desc: "Bisogno esagerato di attenzione e stima altrui per definire il proprio sé." }
-        ],
-        "🟢 5: Ipervigilanza/Inibizione": [
-            { name: "Negatività/Pessimismo", desc: "Focus costante sugli aspetti negativi della vita ignorando quelli positivi." },
-            { name: "Inibizione Emotiva", desc: "Blocco cronico delle emozioni per paura di perdere il controllo o essere criticati." },
-            { name: "Standard Severi", desc: "Sforzi enormi per raggiungere standard altissimi, perfezionismo." },
-            { name: "Punizione", desc: "Tendenza a essere intolleranti e punitivi verso gli errori propri e altrui." }
-        ]
-    };
-
+            <div class="therapist-row">                <div class="therapist-row-label">🧠 Apri con uno psicologo AI → il prompt verrà copiato, incollalo su Gemini</div>                <button class="th-btn" style="background:#2471a3; color:#fff;" onclick="openTherapist('act')">🔵 ACT</button>                <button class="th-btn" style="background:#7d3c98; color:#fff;" onclick="openTherapist('ifs')">🟣 IFS</button>                <button class="th-btn" style="background:#b7950b; color:#1a1a1a;" onclick="openTherapist('cbt')">🟡 CBT / Beck</button>                <button class="th-btn" style="background:#1e8449; color:#fff;" onclick="openTherapist('eft')">🟢 Attachment / EFT</button>            </div>            </div>
+        <div class="card">            <h3 style="margin-bottom: 15px; font-size: 1.1rem;">✅ Cose da Fare</h3>            <div id="task-list"></div>            <button class="add-btn" onclick="addNewTask()">+ Aggiungi nuova attività</button>        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">            <div class="card" style="margin-bottom: 0;">                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">📈 Umore Mensile</h3>                <canvas id="moodChart" width="400" height="200"></canvas>            </div>            <div class="card" style="margin-bottom: 0;">                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">📊 Completamento Abitudini</h3>                <canvas id="habitsChart" width="400" height="200"></canvas>            </div>        </div>
+    </div></div>
+<script>    const firebaseConfig = {        apiKey: "AIzaSyBkcn-7219QYy-o_-bor1UfL6LHsHII62c",        authDomain: "diario-journal.firebaseapp.com",        projectId: "diario-journal",        storageBucket: "diario-journal.firebasestorage.app",        messagingSenderId: "677181579601",        appId: "1:677181579601:web:3cc417033164139f40f370"    };
+    firebase.initializeApp(firebaseConfig);    const auth = firebase.auth();    const db = firebase.firestore();    const storage = firebase.storage();
+    const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];    let selectedDateKey = "";     let currentUser = null;    let unsubscribeSnapshot = null;     let unsubscribeGlobal = null;    let moodChartInstance = null;    let habitsChartInstance = null;    const saveTimeouts = {}; 
+    let globalIdeas = {};    let globalFiles = {};    let globalHabits = {};    let globalSnippets = {};     let globalTasks = {};    let globalSchemaChallenges = {}; 
+    const schemaCategories = {        "🔴 1: Distacco e Rifiuto": [            { name: "Abbandono", desc: "Convinzione che le persone importanti ti lasceranno o sceglieranno qualcun altro." },            { name: "Sfiducia/Abuso", desc: "Aspettativa che gli altri ti faranno del male o ti useranno." },            { name: "Deprivazione Emotiva", desc: "Certezza che nessuno ti darà mai l'affetto o la comprensione di cui hai bisogno." },            { name: "Inadeguatezza/Vergogna", desc: "Sensazione di essere difettoso, sbagliato o 'non amabile'." },            { name: "Isolamento Sociale", desc: "Sentirsi esclusi dal resto del mondo, intrinsecamente diversi." }        ],        "🔵 2: Mancanza di Autonomia": [            { name: "Dipendenza", desc: "Credere di non poter gestire le responsabilità senza il costante aiuto altrui." },            { name: "Vulnerabilità", desc: "Paura esagerata che stia per accadere una catastrofe incontrollabile." },            { name: "Invischiamento", desc: "Coinvolgimento emotivo eccessivo con altri a scapito della propria identità." },            { name: "Fallimento", desc: "Convinzione di essere destinato a fallire o di essere meno capace degli altri." }        ],        "🟣 3: Limiti Compromessi": [            { name: "Pretese/Grandiosità", desc: "Sentirsi superiori e credere di avere diritto a privilegi speciali." },            { name: "Autodisciplina Insufficiente", desc: "Rifiuto di tollerare la frustrazione, porta a procrastinazione cronica." }        ],        "🟡 4: Eterodirezione": [            { name: "Sottomissione", desc: "Permettere agli altri di dominarti per evitare rabbia, ritorsioni o abbandono." },            { name: "Autosacrificio", desc: "Rinunciare ai propri bisogni per aiutare gli altri, spinti dal senso di colpa." },            { name: "Ricerca di Approvazione", desc: "Bisogno esagerato di attenzione e stima altrui per definire il proprio sé." }        ],        "🟢 5: Ipervigilanza/Inibizione": [            { name: "Negatività/Pessimismo", desc: "Focus costante sugli aspetti negativi della vita ignorando quelli positivi." },            { name: "Inibizione Emotiva", desc: "Blocco cronico delle emozioni per paura di perdere il controllo o essere criticati." },            { name: "Standard Severi", desc: "Sforzi enormi per raggiungere standard altissimi, perfezionismo." },            { name: "Punizione", desc: "Tendenza a essere intolleranti e punitivi verso gli errori propri e altrui." }        ]    };
     const moodEmojis = ["😭", "😢", "🙁", "😕", "😐", "🙂", "😊", "😁", "🥰", "🤩"];
-
-    // ── THERAPIST PROMPTS ──────────────────────────────────────────────────────
-    const THERAPIST_PROMPTS = {
-        act: `Sei un terapeuta formato sull'ACT (Acceptance and Commitment Therapy) secondo i testi di Steven C. Hayes, Kirk Strosahl e Kelly G. Wilson ("Acceptance and Commitment Therapy", 1999, seconda edizione 2012) e il manuale clinico di Russ Harris.
-
+    // ── THERAPIST PROMPTS ──────────────────────────────────────────────────────    const THERAPIST_PROMPTS = {        act: `Sei un terapeuta formato sull'ACT (Acceptance and Commitment Therapy) secondo i testi di Steven C. Hayes, Kirk Strosahl e Kelly G. Wilson ("Acceptance and Commitment Therapy", 1999, seconda edizione 2012) e il manuale clinico di Russ Harris.
 Il tuo compito è leggere ciò che scrivo e applicare il modello ACT con rigore.
-
-REGOLE FERREE:
-- Non validare la fusione cognitiva: se mi identifico con un pensiero come se fosse la realtà, fallo notare senza pietà.
-- Non permettere che la sessione rimanga nel registro dell'emozione o dell'analisi: ogni sessione deve terminare con una domanda sull'azione concreta ("cosa farai questa settimana, anche una cosa minima?").
-- Usa i sei processi del modello esaflessibile: accettazione, defusione, sé come contesto, contatto col presente, valori, azione impegnata. Identifica quale è bloccato nel mio testo.
-- Non usare mai la metafora per ammorbidire: usala per chiarire e poi torna al concreto.
-- Se scrivo qualcosa che è chiaramente evitamento esperienziale, chiamalo così.
-- Non chiedermi come mi sento: chiedimi cosa faccio, cosa evito, a cosa mi sto avvicinando o allontanando rispetto ai miei valori.
-
+REGOLE FERREE:- Non validare la fusione cognitiva: se mi identifico con un pensiero come se fosse la realtà, fallo notare senza pietà.- Non permettere che la sessione rimanga nel registro dell'emozione o dell'analisi: ogni sessione deve terminare con una domanda sull'azione concreta ("cosa farai questa settimana, anche una cosa minima?").- Usa i sei processi del modello esaflessibile: accettazione, defusione, sé come contesto, contatto col presente, valori, azione impegnata. Identifica quale è bloccato nel mio testo.- Non usare mai la metafora per ammorbidire: usala per chiarire e poi torna al concreto.- Se scrivo qualcosa che è chiaramente evitamento esperienziale, chiamalo così.- Non chiedermi come mi sento: chiedimi cosa faccio, cosa evito, a cosa mi sto avvicinando o allontanando rispetto ai miei valori.
 LUNGHEZZA: Le tue risposte devono essere lunghe ed esaustive. Non troncare l'analisi. Ogni punto del FORMAT va sviluppato in profondità.
-
 FORMAT: 1) Identifica e analizza in modo approfondito il processo ACT più bloccato nel testo. 2) Una domanda o esercizio operativo. Niente di più.
-
----
-TESTO DEL DIARIO DI OGGI:
-`,
-        ifs: `Sei un terapeuta formato sull'Internal Family Systems Therapy secondo i testi di Richard C. Schwartz ("Internal Family Systems Therapy", 1995; "No Bad Parts", 2021) e i protocolli di Frank Anderson e Martha Sweezy.
-
+---TESTO DEL DIARIO DI OGGI:`,        ifs: `Sei un terapeuta formato sull'Internal Family Systems Therapy secondo i testi di Richard C. Schwartz ("Internal Family Systems Therapy", 1995; "No Bad Parts", 2021) e i protocolli di Frank Anderson e Martha Sweezy.
 Il tuo compito è lavorare con il sistema interno che emerge da ciò che scrivo.
-
-REGOLE FERREE:
-- Non trattare ciò che descrivo come un problema unitario: identifica quale Parte sta parlando nel testo (Manager, Vigile del Fuoco, Esule) e nominala.
-- Non confondere il Self con le Parti: se rilevi che chi scrive è blendato con una Parte (es. un Manager critico o un Esule che domina), evidenzialo direttamente.
-- Non permettere sessioni che rimangano nella narrazione: il lavoro IFS è interno, non analitico. Porta sempre la domanda verso l'interno ("cosa sente quella parte in questo momento?").
-- Non idealizzare il processo: se una Parte è protettiva ma dannosa, dillo. I Vigili del Fuoco non sono eroi, sono sistemi di emergenza.
-- Non fare reassurance: il Self è già presente, il tuo lavoro è aiutare a distinguerlo dalle Parti, non rassicurare.
-- Sii diretto su eventuali polarizzazioni tra Parti che rilevi nel testo.
-
+REGOLE FERREE:- Non trattare ciò che descrivo come un problema unitario: identifica quale Parte sta parlando nel testo (Manager, Vigile del Fuoco, Esule) e nominala.- Non confondere il Self con le Parti: se rilevi che chi scrive è blendato con una Parte (es. un Manager critico o un Esule che domina), evidenzialo direttamente.- Non permettere sessioni che rimangano nella narrazione: il lavoro IFS è interno, non analitico. Porta sempre la domanda verso l'interno ("cosa sente quella parte in questo momento?").- Non idealizzare il processo: se una Parte è protettiva ma dannosa, dillo. I Vigili del Fuoco non sono eroi, sono sistemi di emergenza.- Non fare reassurance: il Self è già presente, il tuo lavoro è aiutare a distinguerlo dalle Parti, non rassicurare.- Sii diretto su eventuali polarizzazioni tra Parti che rilevi nel testo.
 LUNGHEZZA: Le tue risposte devono essere lunghe ed esaustive. Non troncare l'analisi. Ogni punto del FORMAT va sviluppato in profondità.
-
 FORMAT: 1) Mappa approfondita del sistema interno come emerge dal testo (quali Parti sono attive, come interagiscono). 2) Una domanda rivolta verso l'interno.
-
----
-TESTO DEL DIARIO DI OGGI:
-`,
-        cbt: `Sei un terapeuta cognitivo-comportamentale formato sulla CBT classica di Aaron T. Beck ("Cognitive Therapy of Depression", 1979; "Cognitive Therapy and the Emotional Disorders", 1976) e sulle elaborazioni di Christine Padesky e Kathleen Mooney.
-
+---TESTO DEL DIARIO DI OGGI:`,        cbt: `Sei un terapeuta cognitivo-comportamentale formato sulla CBT classica di Aaron T. Beck ("Cognitive Therapy of Depression", 1979; "Cognitive Therapy and the Emotional Disorders", 1976) e sulle elaborazioni di Christine Padesky e Kathleen Mooney.
 Il tuo compito è smontare i pattern cognitivi nel testo che ti scrivo.
-
-REGOLE FERREE:
-- Non essere mai d'accordo con un pensiero automatico solo perché lo presento come un fatto. Trattali sempre come ipotesi.
-- Identifica esplicitamente le distorsioni cognitive presenti nel testo (catastrofizzazione, personalizzazione, pensiero tutto-o-niente, lettura del pensiero, ecc.) e nominale senza eufemismi.
-- Non permettere che la sessione sia solo analisi: applica il metodo socratico. Fai domande che smontano le credenze disfunzionali, non domande aperte che invitano alla ruminazione.
-- Se rilevi schemi cognitivi ricorrenti su sé stesso, il futuro o il mondo (la triade cognitiva di Beck), evidenziali.
-- Sii freddo e preciso. Non sei un coach motivazionale. Non dici "ce la fai". Mostri dove il ragionamento è difettoso.
-- Proponi un esperimento comportamentale concreto quando rilevante.
-
+REGOLE FERREE:- Non essere mai d'accordo con un pensiero automatico solo perché lo presento come un fatto. Trattali sempre come ipotesi.- Identifica esplicitamente le distorsioni cognitive presenti nel testo (catastrofizzazione, personalizzazione, pensiero tutto-o-niente, lettura del pensiero, ecc.) e nominale senza eufemismi.- Non permettere che la sessione sia solo analisi: applica il metodo socratico. Fai domande che smontano le credenze disfunzionali, non domande aperte che invitano alla ruminazione.- Se rilevi schemi cognitivi ricorrenti su sé stesso, il futuro o il mondo (la triade cognitiva di Beck), evidenziali.- Sii freddo e preciso. Non sei un coach motivazionale. Non dici "ce la fai". Mostri dove il ragionamento è difettoso.- Proponi un esperimento comportamentale concreto quando rilevante.
 LUNGHEZZA: Le tue risposte devono essere lunghe ed esaustive. Non troncare l'analisi. Ogni punto del FORMAT va sviluppato in profondità.
-
 FORMAT: 1) Distorsioni cognitive rilevate, con citazione e analisi dettagliata dal testo. 2) Una domanda socratica. 3) Se applicabile: un micro-esperimento comportamentale.
-
----
-TESTO DEL DIARIO DI OGGI:
-`,
-        eft: `Sei un terapeuta specializzato in terapia basata sull'attaccamento e sull'Emotionally Focused Therapy (EFT) secondo i testi di John Bowlby ("Attachment and Loss", trilogia 1969-1980), Mary Ainsworth e Sue Johnson ("Emotionally Focused Therapy for Couples", 1996; "Hold Me Tight", 2008).
-
+---TESTO DEL DIARIO DI OGGI:`,        eft: `Sei un terapeuta specializzato in terapia basata sull'attaccamento e sull'Emotionally Focused Therapy (EFT) secondo i testi di John Bowlby ("Attachment and Loss", trilogia 1969-1980), Mary Ainsworth e Sue Johnson ("Emotionally Focused Therapy for Couples", 1996; "Hold Me Tight", 2008).
 Il tuo compito è leggere le dinamiche relazionali e di attaccamento nel testo che ti scrivo.
-
-REGOLE FERREE:
-- Identifica il pattern di attaccamento prevalente (sicuro, ansioso/preoccupato, evitante/distanziante, disorganizzato) come emerge dal testo — senza chiedermi di autodiagnosticarmi.
-- Analizza i cicli relazionali disfunzionali: chi attacca, chi si ritira, cosa scatena cosa. Rendili visibili come struttura, non come colpa di qualcuno.
-- Non normalizzare i pattern evitanti come "indipendenza" né quelli ansiosi come "sensibilità": sono strategie di regolazione costruite in risposta a condizioni specifiche. Trattali come tali.
-- Non fare morale relazionale. Non dire cosa "dovrebbero" fare gli altri: lavora su cosa io faccio nei cicli e perché.
-- Se rilevi che un bisogno di attaccamento è mascherato da rabbia, distanza o autosufficienza, nominalo esplicitamente.
-- La domanda finale deve riguardare sempre il bisogno primario nascosto, non il comportamento superficiale.
-
+REGOLE FERREE:- Identifica il pattern di attaccamento prevalente (sicuro, ansioso/preoccupato, evitante/distanziante, disorganizzato) come emerge dal testo — senza chiedermi di autodiagnosticarmi.- Analizza i cicli relazionali disfunzionali: chi attacca, chi si ritira, cosa scatena cosa. Rendili visibili come struttura, non come colpa di qualcuno.- Non normalizzare i pattern evitanti come "indipendenza" né quelli ansiosi come "sensibilità": sono strategie di regolazione costruite in risposta a condizioni specifiche. Trattali come tali.- Non fare morale relazionale. Non dire cosa "dovrebbero" fare gli altri: lavora su cosa io faccio nei cicli e perché.- Se rilevi che un bisogno di attaccamento è mascherato da rabbia, distanza o autosufficienza, nominalo esplicitamente.- La domanda finale deve riguardare sempre il bisogno primario nascosto, non il comportamento superficiale.
 LUNGHEZZA: Le tue risposte devono essere lunghe ed esaustive. Non troncare l'analisi. Ogni punto del FORMAT va sviluppato in profondità.
-
 FORMAT: 1) Pattern di attaccamento e ciclo relazionale rilevati, analizzati in dettaglio. 2) Il bisogno primario nascosto che ipotizzi. 3) Una domanda.
+---TESTO DEL DIARIO DI OGGI:`    };
+    const GEMINI_LINKS = {        act:    "https://gemini.google.com/app/fbd2ec0b4a0ed814?hl=it",        ifs:    "https://gemini.google.com/app/03d3fd6aa68ea02a?hl=it",        cbt:    "https://gemini.google.com/app/3993ea797fb7e960?hl=it",        eft:    "https://gemini.google.com/app/2ace99253b2760fc?hl=it"    };
+    function openTherapist(type) {        const journalText = document.getElementById('journal-input').value.trim();        const gratitudeText = document.getElementById('gratitude-input').value.trim();        
+        if (!journalText && !gratitudeText) {            alert("Il diario di oggi è vuoto. Scrivi qualcosa prima di consultare uno psicologo.");            return;        }
+        let combinedText = "";        if (journalText) combinedText += `[DIARIO GENERALE]\n${journalText}\n\n`;        if (gratitudeText) combinedText += `[DIARIO DELLA GRATITUDINE]\n${gratitudeText}`;
 
----
-TESTO DEL DIARIO DI OGGI:
-`
-    };
-
-    const GEMINI_LINKS = {
-        act:    "https://gemini.google.com/app/fbd2ec0b4a0ed814?hl=it",
-        ifs:    "https://gemini.google.com/app/03d3fd6aa68ea02a?hl=it",
-        cbt:    "https://gemini.google.com/app/3993ea797fb7e960?hl=it",
-        eft:    "https://gemini.google.com/app/2ace99253b2760fc?hl=it"
-    };
-
-    function openTherapist(type) {
-        const journalText = document.getElementById('journal-input').value.trim();
-        if (!journalText) {
-            alert("Il diario di oggi è vuoto. Scrivi qualcosa prima di consultare uno psicologo.");
-            return;
-        }
-        const fullPrompt = THERAPIST_PROMPTS[type] + journalText;
-        navigator.clipboard.writeText(fullPrompt).then(() => {
-            const toast = document.getElementById("toast");
-            toast.innerText = "Prompt copiato! Incollalo su Gemini (Ctrl+V)";
-            toast.className = "show";
-            setTimeout(() => {
-                toast.className = toast.className.replace("show", "");
-                setTimeout(() => { toast.innerText = "Appunti Copiati!"; }, 400);
-            }, 3500);
-            window.open(GEMINI_LINKS[type], "_blank");
-        }).catch(() => {
-            alert("Impossibile copiare automaticamente. Copia manualmente il prompt.");
-        });
-    }
-    // ── END THERAPIST LOGIC ───────────────────────────────────────────────────
-
-    window.onload = () => {
-        setupMoodTracker();
-        setMainTitleDate(); 
-        setupSelects();
-        const today = new Date();
-        selectDay(today.getDate(), today.getMonth(), today.getFullYear());
-    };
-
-    function setMainTitleDate() {
-        const today = new Date();
-        document.getElementById('main-title').innerText = `${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`;
-    }
-
-    function toggleAcc(contentId) { 
-        const content = document.getElementById(contentId); 
-        content.style.display = content.style.display === 'block' ? 'none' : 'block'; 
-    }
-    
-    function toggleSubAcc(id) {
-        const c = document.getElementById(id);
-        c.style.display = c.style.display === 'block' ? 'none' : 'block';
-    }
-
-    function setupMoodTracker() {
-        const container = document.getElementById('mood-selector');
-        let html = '<div style="display:flex; gap:8px;">';
-        for(let i=1; i<=10; i++) {
-            html += `
-                <label class="mood-label">
-                    <input type="radio" name="mood-radio" value="${i}" onchange="saveMood(${i})">
-                    <div>${moodEmojis[i-1]}</div>
-                    <span>${i}</span>
-                </label>
-            `;
-        }
-        html += '</div>';
-        container.innerHTML += html;
-    }
-
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            currentUser = user;
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('logout-btn').style.display = 'block';
-            loadGlobalSettings();
-            if (selectedDateKey) loadDataForDate(selectedDateKey);
-        } else {
-            currentUser = null;
-            if(unsubscribeGlobal) unsubscribeGlobal();
-            if(unsubscribeSnapshot) unsubscribeSnapshot();
-            document.getElementById('login-screen').style.display = 'flex';
-            document.getElementById('logout-btn').style.display = 'none';
-        }
-    });
-
-    async function signIn() {
-        const e = document.getElementById('email-input').value;
-        const p = document.getElementById('password-input').value;
-        try { await auth.signInWithEmailAndPassword(e, p); document.getElementById('login-error').innerText = ''; } 
-        catch (err) { document.getElementById('login-error').innerText = "Credenziali errate."; }
-    }
-    async function registerUser() {
-        const e = document.getElementById('email-input').value;
-        const p = document.getElementById('password-input').value;
-        if(p.length < 6) { document.getElementById('login-error').innerText = "Password min. 6 caratteri."; return; }
-        try { await auth.createUserWithEmailAndPassword(e, p); document.getElementById('login-error').innerText = ''; } 
-        catch (err) { document.getElementById('login-error').innerText = "Errore: " + err.message; }
-    }
-    async function signOut() { await auth.signOut(); }
-
-    function loadGlobalSettings() {
-        if(!currentUser) return;
-        const ref = db.collection('utenti').doc(currentUser.uid).collection('impostazioni').doc('os_globals');
-        unsubscribeGlobal = ref.onSnapshot(doc => {
-            const activeElement = document.activeElement;
-            const isTypingTask = activeElement && activeElement.classList.contains('task-text');
-            // Gestione dei focus sulle textarea degli schemi per evitare riscritture mentre digiti
-            const isTypingSchema = activeElement && activeElement.id && activeElement.id.startsWith('txt_schema_');
-
-            if(doc.exists) {
-                const d = doc.data();
-                if(d.ideas) globalIdeas = d.ideas;
-                if(d.files) globalFiles = d.files;
-                if(d.habits) globalHabits = d.habits;
-                if(d.snippets) globalSnippets = d.snippets;
-                if(d.tasks) globalTasks = d.tasks;
-                if(d.schemaChallenges) globalSchemaChallenges = d.schemaChallenges;
-            } else {
-                ref.set({ ideas: {}, files: {}, habits: {}, snippets: {}, tasks: {}, schemaChallenges: {} }, {merge:true});
-            }
-            renderIdeas(); 
-            renderFiles();
-            renderHabitsGlobal();
-            renderSnippets();
-            if (!isTypingTask) renderTasks();
-            if (!isTypingSchema) renderSchemaChallenges();
-        });
-    }
-
-    function updateGlobal(key, data) {
-        if(!currentUser) return;
-        db.collection('utenti').doc(currentUser.uid).collection('impostazioni').doc('os_globals').set({ [key]: data }, {merge: true});
-    }
-    
-    function getDocRef(dateKey = selectedDateKey) { 
-        return db.collection('utenti').doc(currentUser.uid).collection('giornate_os').doc(dateKey); 
-    }
-
-    function setupSelects() {
-        const mSel = document.getElementById('month-select'); const ySel = document.getElementById('year-select'); const now = new Date();
-        months.forEach((m, i) => { let opt = new Option(m, i); if(i === now.getMonth()) opt.selected = true; mSel.add(opt); });
-        for(let i = 2024; i <= 2030; i++) { let opt = new Option(i, i); if(i === now.getFullYear()) opt.selected = true; ySel.add(opt); }
-        renderCalendar();
-    }
-    
-    function renderCalendar() {
-        const grid = document.getElementById('calendar-grid'); const month = parseInt(document.getElementById('month-select').value); const year = parseInt(document.getElementById('year-select').value);
-        grid.innerHTML = ''; ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].forEach(d => grid.innerHTML += `<div class="day-name">${d}</div>`);
-        const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
-        let offset = firstDay === 0 ? 6 : firstDay - 1; for(let i=0; i<offset; i++) grid.innerHTML += `<div></div>`;
-        const today = new Date();
-        for(let d=1; d<=daysInMonth; d++) {
-            const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) ? 'today' : '';
-            const isSelected = dateKey === selectedDateKey ? 'selected' : '';
-            grid.innerHTML += `<div class="day ${isToday} ${isSelected}" onclick="selectDay(${d}, ${month}, ${year})">${d}</div>`;
-        }
-    }
-    
-    function selectDay(d, m, y) {
-        selectedDateKey = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        document.getElementById('current-selection-date').innerText = `${d} ${months[m]} ${y}`;
-        
-        document.getElementById('journal-input').value = "";
-        document.getElementById('journal-input').readOnly = false;
-        document.getElementById('btn-save-journal').style.display = 'inline-block';
-        document.getElementById('btn-edit-journal').style.display = 'none';
-        
-        document.querySelectorAll('input[name="mood-radio"]').forEach(r => r.checked = false);
-
-        renderCalendar(); 
-        loadDataForDate(selectedDateKey);
-        loadMonthDataForCharts(y, m);
-    }
-
-    async function loadDataForDate(dateKey) {
-        if (!currentUser) return;
-        if (unsubscribeSnapshot) unsubscribeSnapshot();
-
-        unsubscribeSnapshot = getDocRef(dateKey).onSnapshot((doc) => {
-            let data = doc.exists ? doc.data() : { journal: "", mood: 0, habitsLog: {} };
-            
-            const jInput = document.getElementById('journal-input');
-            const btnSave = document.getElementById('btn-save-journal');
-            const btnEdit = document.getElementById('btn-edit-journal');
-
-            if (document.activeElement !== jInput) {
-                jInput.value = data.journal || "";
-                
-                if(data.journal && data.journal.trim() !== "") {
-                    jInput.readOnly = true;
-                    btnSave.style.display = 'none';
-                    btnEdit.style.display = 'inline-block';
-                } else {
-                    jInput.readOnly = false;
-                    btnSave.style.display = 'inline-block';
-                    btnEdit.style.display = 'none';
-                }
-            }
-
-            const moodRadios = document.querySelectorAll('input[name="mood-radio"]');
-            moodRadios.forEach(radio => {
-                radio.checked = parseInt(radio.value) === data.mood;
-            });
-
-            syncHabitsCheckboxes(data.habitsLog || {});
-        });
-    }
-
-    // --- SALVATAGGIO MANUALE DIARIO ---
-    function saveJournal() {
-        const text = document.getElementById('journal-input').value;
-        const currentDataKey = selectedDateKey; 
-        
-        getDocRef(currentDataKey).set({ journal: text }, { merge: true }).then(() => {
-            document.getElementById('journal-input').readOnly = true;
-            document.getElementById('btn-save-journal').style.display = 'none';
-            document.getElementById('btn-edit-journal').style.display = 'inline-block';
-        });
-    }
-
-    function editJournal() {
-        const jInput = document.getElementById('journal-input');
-        jInput.readOnly = false;
-        jInput.focus();
-        document.getElementById('btn-save-journal').style.display = 'inline-block';
-        document.getElementById('btn-edit-journal').style.display = 'none';
-    }
-
-    function saveMood(value) {
-        getDocRef().set({ mood: value }, { merge: true });
-        const y = parseInt(document.getElementById('year-select').value);
-        const m = parseInt(document.getElementById('month-select').value);
-        loadMonthDataForCharts(y, m);
-    }
-
-    // --- ABITUDINI (Lista Semplice) ---
-    function addHabit() {
-        const name = prompt("Nome della nuova abitudine (es. Lettura, Allenamento):");
-        if(name) {
-            const id = "hab_" + Date.now();
-            globalHabits[id] = { id, name };
-            updateGlobal('habits', globalHabits);
-        }
-    }
-    function deleteHabit(id) {
-        delete globalHabits[id];
-        updateGlobal('habits', globalHabits);
-    }
-    function renderHabitsGlobal() {
-        const list = document.getElementById('habits-list'); list.innerHTML = '';
-        Object.values(globalHabits).forEach(hab => {
-            list.innerHTML += `
-                <div class="list-item">
-                    <input type="checkbox" id="chk_${hab.id}" style="width:18px; height:18px; cursor:pointer;" onchange="saveHabitLog('${hab.id}')">
-                    <span style="flex:1; font-weight:600; font-size: 0.9rem;">${hab.name}</span>
-                    <button class="delete-btn" onclick="deleteHabit('${hab.id}')">✕</button>
-                </div>
-            `;
-        });
-        if(currentUser && selectedDateKey) {
-            getDocRef().get().then(doc => {
-                if(doc.exists) syncHabitsCheckboxes(doc.data().habitsLog || {});
-            });
-        }
-    }
-    function saveHabitLog(habId) {
-        const isChecked = document.getElementById(`chk_${habId}`).checked;
-        getDocRef().set({ habitsLog: { [habId]: isChecked } }, { merge: true }).then(() => {
-            const y = parseInt(document.getElementById('year-select').value);
-            const m = parseInt(document.getElementById('month-select').value);
-            loadMonthDataForCharts(y, m); 
-        });
-    }
-    function syncHabitsCheckboxes(logs) {
-        Object.values(globalHabits).forEach(hab => {
-            const chk = document.getElementById(`chk_${hab.id}`);
-            if(chk) chk.checked = !!logs[hab.id];
-        });
-    }
-
-    // --- IDEE (Ora Checkabili) ---
-    function addIdea() {
-        const input = document.getElementById('new-idea-input');
-        const text = input.value.trim();
-        if(text) {
-            const id = "idea_" + Date.now();
-            globalIdeas[id] = { id, text, completed: false };
-            updateGlobal('ideas', globalIdeas);
-            input.value = '';
-        }
-    }
-    function toggleIdea(id) {
-        if(globalIdeas[id]) {
-            globalIdeas[id].completed = !globalIdeas[id].completed;
-            updateGlobal('ideas', globalIdeas);
-        }
-    }
-    function renderIdeas() {
-        const list = document.getElementById('ideas-list'); list.innerHTML = '';
-        Object.values(globalIdeas).reverse().forEach(idea => {
-            const isChecked = idea.completed ? 'checked' : '';
-            const textStyle = idea.completed ? 'text-decoration: line-through; color: var(--done); opacity: 0.6;' : '';
-            list.innerHTML += `
-                <div class="list-item">
-                    <input type="checkbox" ${isChecked} style="width:18px; height:18px; cursor:pointer;" onchange="toggleIdea('${idea.id}')">
-                    <span style="flex:1; font-size: 0.9rem; ${textStyle}">${idea.text}</span>
-                    <button class="delete-btn" onclick="delete globalIdeas['${idea.id}']; updateGlobal('ideas', globalIdeas);">✕</button>
-                </div>
-            `;
-        });
-    }
-    
-// --- SFIDA ALLO SCHEMA ---
-    function renderSchemaChallenges() {
-        const container = document.getElementById('schemas-list');
-        if(!container) return;
-        let html = '';
-        let catIndex = 0;
-        
-        for (const [category, schemas] of Object.entries(schemaCategories)) {
-            let catId = 'schema_cat_' + catIndex;
-            html += `
-                <div style="margin-bottom: 10px;">
-                    <div class="sub-acc-header" style="background:#222; color:var(--accent);" onclick="toggleSubAcc('${catId}')">
-                        <span>${category}</span><span>▼</span>
-                    </div>
-                    <div class="sub-acc-content" id="${catId}" style="display:none; padding:5px; background:transparent; border:none;">
-            `;
-            
-            schemas.forEach((schemaObj, sIndex) => {
-                let schemaKey = 'schema_' + catIndex + '_' + sIndex;
-                let schemaId = 'schema_item_' + catIndex + '_' + sIndex;
-                let savedText = globalSchemaChallenges[schemaKey] || "";
-                
-                html += `
-                    <div style="margin-bottom: 8px;">
-                        <div class="sub-acc-header" style="font-size:0.85rem; padding:8px;" onclick="toggleSubAcc('${schemaId}')">
-                            <span>${schemaObj.name}</span>
-                        </div>
-                        <div class="sub-acc-content" id="${schemaId}" style="display:none; padding:10px; background:#1a1a1a;">
-                            <p style="font-size:0.8rem; color:#888; margin-bottom:10px; font-style:italic; line-height:1.4;">${schemaObj.desc}</p>
-                            <textarea id="txt_${schemaKey}" placeholder="Qual è la tua sfida concreta a questo schema?" style="width:100%; height:80px; font-size:0.85rem; padding:8px; resize:vertical; margin-bottom:5px;">${savedText}</textarea>
-                            <button class="add-btn" style="margin-top:0; padding:6px; font-size:0.8rem;" onclick="saveSchemaChallenge('${schemaKey}')">Salva Sfida</button>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            html += `</div></div>`;
-            catIndex++;
-        }
-        
-        container.innerHTML = html;
-    }
-
-    function saveSchemaChallenge(key) {
-        const textEl = document.getElementById('txt_' + key);
-        if(!textEl) return;
-        globalSchemaChallenges[key] = textEl.value.trim();
-        updateGlobal('schemaChallenges', globalSchemaChallenges);
-        
-        const toast = document.getElementById("toast");
-        toast.innerText = "Sfida Salvata!";
-        toast.className = "show";
-        setTimeout(() => { 
-            toast.className = toast.className.replace("show", ""); 
-            setTimeout(() => { toast.innerText = "Appunti Copiati!"; }, 400); // Ripristina testo base
-        }, 2500);
-    }
-
-    // --- SNIPPET DI TESTO / CODICE ---
-    function addSnippet() {
-        const titleEl = document.getElementById('snippet-title-input');
-        const contentEl = document.getElementById('snippet-content-input');
-        const title = titleEl.value.trim();
-        const content = contentEl.value.trim();
-        
-        if(title && content) {
-            const id = "snip_" + Date.now();
-            globalSnippets[id] = { id, title, content };
-            updateGlobal('snippets', globalSnippets);
-            titleEl.value = ''; contentEl.value = '';
-        } else {
-            alert("Inserisci sia il titolo che il testo/codice.");
-        }
-    }
-    function deleteSnippet(id) {
-        if(confirm("Eliminare questo testo?")) {
-            delete globalSnippets[id];
-            updateGlobal('snippets', globalSnippets);
-        }
-    }
-    function copySnippet(id) {
-        const snip = globalSnippets[id];
-        if(!snip) return;
-        navigator.clipboard.writeText(snip.content).then(() => {
-            const toast = document.getElementById("toast");
-            toast.className = "show";
-            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
-        });
-    }
-    function renderSnippets() {
-        const list = document.getElementById('snippets-list'); list.innerHTML = '';
-        Object.values(globalSnippets).reverse().forEach(snip => {
-            const accId = 'snip_content_' + snip.id;
-            list.innerHTML += `
-                <div>
-                    <div class="sub-acc-header" onclick="toggleSubAcc('${accId}')">
-                        <span style="flex:1;">📝 ${snip.title}</span>
-                        <button class="delete-btn" onclick="event.stopPropagation(); deleteSnippet('${snip.id}')" style="margin-left:10px;">✕</button>
-                    </div>
-                    <div class="sub-acc-content" id="${accId}">
-                        <button onclick="copySnippet('${snip.id}')" style="margin-bottom: 8px; background: #333; color: white; border: 1px solid var(--accent); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">📋 Copia</button>
-                        <br>${snip.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
-                    </div>
-                </div>
-            `;
-        });
-    }
-
-    // --- FILES FISICI ---
-    async function uploadFile(event) {
-        const file = event.target.files[0];
-        if(!file || !currentUser) return;
-
-        const nameInput = document.getElementById('file-name-input');
-        const customName = nameInput.value.trim() || file.name;
-
-        const statusText = document.getElementById('upload-status');
-        statusText.style.display = 'block';
-        statusText.innerText = "Caricamento in corso...";
-
-        try {
-            const fileRef = storage.ref(`utenti/${currentUser.uid}/files/${Date.now()}_${file.name}`);
-            await fileRef.put(file);
-            const downloadUrl = await fileRef.getDownloadURL();
-            
-            const fileId = "file_" + Date.now();
-            globalFiles[fileId] = {
-                id: fileId,
-                name: customName,
-                url: downloadUrl,
-                path: fileRef.fullPath
-            };
-            
-            updateGlobal('files', globalFiles);
-            
-            nameInput.value = ""; 
-            statusText.style.display = 'none';
-
-        } catch (error) {
-            console.error(error);
-            statusText.innerText = "Errore durante il caricamento! Hai attivato Firebase Storage?";
-            setTimeout(() => statusText.style.display = 'none', 4000);
-        }
-        event.target.value = '';
-    }
-
-    async function deleteFile(fileId) {
-        if(!confirm("Sicuro di voler eliminare questo file?")) return;
-        
-        const fileData = globalFiles[fileId];
-        if(!fileData) return;
-
-        try {
-            await storage.ref(fileData.path).delete();
-        } catch (e) {
-            console.log("File non trovato nello storage, lo rimuovo solo dal database", e);
-        }
-
-        delete globalFiles[fileId];
-        updateGlobal('files', globalFiles);
-    }
-
-    function renderFiles() {
-        const list = document.getElementById('files-list'); list.innerHTML = '';
-        Object.values(globalFiles).reverse().forEach(f => {
-            list.innerHTML += `
-                <div class="saved-item">
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; font-size: 0.9rem;">📎 ${f.name}</span>
-                    <div style="display:flex; gap: 10px; align-items:center;">
-                        <a href="${f.url}" target="_blank" class="file-link">Apri ↗</a>
-                        <button class="delete-btn" onclick="deleteFile('${f.id}')">✕</button>
-                    </div>
-                </div>
-            `;
-        });
-    }
-
-    // --- COSE DA FARE (Global Tasks) ---
-    function addNewTask() {
-        const id = "task_" + Date.now();
-        globalTasks[id] = { id: id, text: "", completed: false, ts: Date.now() };
-        updateGlobal('tasks', globalTasks);
-        setTimeout(() => {
-            const el = document.querySelector(`#${id} .task-text`);
-            if(el) { el.focus(); el.select(); }
-        }, 50);
-    }
-
-    function renderTasks() {
-        const list = document.getElementById('task-list');
-        if(!list) return;
-        list.innerHTML = '';
-        Object.values(globalTasks).sort((a,b) => a.ts - b.ts).forEach(data => {
-            const div = document.createElement('div'); div.className = 'task-item'; div.id = data.id;
-            div.innerHTML = `
-                <div class="check-btn ${data.completed ? 'active' : ''}" onclick="toggleTask('${data.id}')"></div>
-                <input type="text" class="task-text ${data.completed ? 'completed' : ''}" value="${data.text ? data.text.replace(/"/g, '&quot;') : ''}" placeholder="Nuova attività..." onclick="this.select()" oninput="debounceSaveTask('${data.id}')" onkeydown="if(event.key==='Enter') this.blur()">
-                <span class="delete-btn" onclick="deleteTask('${data.id}')">✕</span>
-            `;
-            list.appendChild(div);
-        });
-    }
-
-    function toggleTask(id) {
-        if(globalTasks[id]) {
-            globalTasks[id].completed = !globalTasks[id].completed;
-            updateGlobal('tasks', globalTasks);
-        }
-    }
-
-    function deleteTask(id) {
-        if(confirm("Eliminare questa attività?")) {
-            delete globalTasks[id];
-            updateGlobal('tasks', globalTasks);
-        }
-    }
-
-    function debounceSaveTask(id) {
-        clearTimeout(saveTimeouts['task_'+id]);
-        saveTimeouts['task_'+id] = setTimeout(() => {
-            const el = document.getElementById(id); if(!el) return;
-            const text = el.querySelector('.task-text').value;
-            if(globalTasks[id]) {
-                globalTasks[id].text = text;
-                updateGlobal('tasks', globalTasks);
-            }
-        }, 500);
-    }
-
-    // --- GRAFICI (Umore e Abitudini) ---
-    async function loadMonthDataForCharts(year, month) {
-        if(!currentUser) return;
-        const startStr = `${year}-${String(month+1).padStart(2,'0')}-01`;
-        const endStr = `${year}-${String(month+1).padStart(2,'0')}-31`;
-        
-        try {
-            const snapshot = await db.collection('utenti').doc(currentUser.uid).collection('giornate_os')
-                .where(firebase.firestore.FieldPath.documentId(), '>=', startStr)
-                .where(firebase.firestore.FieldPath.documentId(), '<=', endStr)
-                .get();
-            
-            let daysMap = {};
-            snapshot.forEach(doc => {
-                daysMap[doc.id] = doc.data();
-            });
-
-            renderCharts(year, month, daysMap);
-        } catch(e) {
-            console.error("Errore fetch dati grafici:", e);
-        }
-    }
-
-    function renderCharts(year, month, daysMap) {
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
-        
-        const moodData = []; 
-        const habitsData = [];
-
-        for(let d = 1; d <= daysInMonth; d++) {
-            const key = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const dayInfo = daysMap[key] || {};
-            
-            moodData.push(dayInfo.mood || null); 
-            
-            let completedHabits = 0;
-            if(dayInfo.habitsLog) {
-                completedHabits = Object.values(dayInfo.habitsLog).filter(v => v === true).length;
-            }
-            habitsData.push(completedHabits || null);
-        }
-
-        const ctxMood = document.getElementById('moodChart').getContext('2d');
-        if(moodChartInstance) moodChartInstance.destroy();
-        moodChartInstance = new Chart(ctxMood, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Umore',
-                    data: moodData, 
-                    borderColor: '#f39c12',
-                    backgroundColor: 'rgba(243, 156, 18, 0.2)',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#f39c12',
-                    tension: 0.3, 
-                    spanGaps: true 
-                }]
-            },
-            options: { responsive: true, scales: { y: { min: 1, max: 10, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }
-        });
-
-        const ctxHabits = document.getElementById('habitsChart').getContext('2d');
-        if(habitsChartInstance) habitsChartInstance.destroy();
-        habitsChartInstance = new Chart(ctxHabits, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Abitudini Completate',
-                    data: habitsData, 
-                    backgroundColor: '#27ae60',
-                    borderRadius: 4
-                }]
-            },
-            options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }
-        });
-    }
-
-</script>
-</body>
-</html>
+        const fullPrompt = THERAPIST_PROMPTS[type] + "\n" + combinedText.trim();        navigator.clipboard.writeText(fullPrompt).then(() => {            const toast = document.getElementById("toast");            toast.innerText = "Prompt copiato! Incollalo su Gemini (Ctrl+V)";            toast.className = "show";            setTimeout(() => {                toast.className = toast.className.replace("show", "");                setTimeout(() => { toast.innerText = "Appunti Copiati!"; }, 400);            }, 3500);            window.open(GEMINI_LINKS[type], "_blank");        }).catch(() => {            alert("Impossibile copiare automaticamente. Copia manualmente il prompt.");        });    }    // ── END THERAPIST LOGIC ───────────────────────────────────────────────────
+    window.onload = () => {        setupMoodTracker();        setMainTitleDate();         setupSelects();        const today = new Date();        selectDay(today.getDate(), today.getMonth(), today.getFullYear());    };
+    function setMainTitleDate() {        const today = new Date();        document.getElementById('main-title').innerText = `${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`;    }
+    function toggleAcc(contentId) {         const content = document.getElementById(contentId);         content.style.display = content.style.display === 'block' ? 'none' : 'block';     }        function toggleSubAcc(id) {        const c = document.getElementById(id);        c.style.display = c.style.display === 'block' ? 'none' : 'block';    }
+    function setupMoodTracker() {        const container = document.getElementById('mood-selector');        let html = '<div style="display:flex; gap:8px;">';        for(let i=1; i<=10; i++) {            html += `                <label class="mood-label">                    <input type="radio" name="mood-radio" value="${i}" onchange="saveMood(${i})">                    <div>${moodEmojis[i-1]}</div>                    <span>${i}</span>                </label>            `;        }        html += '</div>';        container.innerHTML += html;    }
+    auth.onAuthStateChanged((user) => {        if (user) {            currentUser = user;            document.getElementById('login-screen').style.display = 'none';            document.getElementById('logout-btn').style.display = 'block';            loadGlobalSettings();            if (selectedDateKey) loadDataForDate(selectedDateKey);        } else {            currentUser = null;            if(unsubscribeGlobal) unsubscribeGlobal();            if(unsubscribeSnapshot) unsubscribeSnapshot();            document.getElementById('login-screen').style.display = 'flex';            document.getElementById('logout-btn').style.display = 'none';        }    });
+    async function signIn() {        const e = document.getElementById('email-input').value;        const p = document.getElementById('password-input').value;        try { await auth.signInWithEmailAndPassword(e, p); document.getElementById('login-error').innerText = ''; }         catch (err) { document.getElementById('login-error').innerText = "Credenziali errate."; }    }    async function registerUser() {        const e = document.getElementById('email-input').value;        const p = document.getElementById('password-input').value;        if(p.length < 6) { document.getElementById('login-error').innerText = "Password min. 6 caratteri."; return; }        try { await auth.createUserWithEmailAndPassword(e, p); document.getElementById('login-error').innerText = ''; }         catch (err) { document.getElementById('login-error').innerText = "Errore: " + err.message; }    }    async function signOut() { await auth.signOut(); }
+    function loadGlobalSettings() {        if(!currentUser) return;        const ref = db.collection('utenti').doc(currentUser.uid).collection('impostazioni').doc('os_globals');        unsubscribeGlobal = ref.onSnapshot(doc => {            const activeElement = document.activeElement;            const isTypingTask = activeElement && activeElement.classList.contains('task-text');            // Gestione dei focus sulle textarea degli schemi per evitare riscritture mentre digiti            const isTypingSchema = activeElement && activeElement.id && activeElement.id.startsWith('txt_schema_');
+            if(doc.exists) {                const d = doc.data();                if(d.ideas) globalIdeas = d.ideas;                if(d.files) globalFiles = d.files;                if(d.habits) globalHabits = d.habits;                if(d.snippets) globalSnippets = d.snippets;                if(d.tasks) globalTasks = d.tasks;                if(d.schemaChallenges) globalSchemaChallenges = d.schemaChallenges;            } else {                ref.set({ ideas: {}, files: {}, habits: {}, snippets: {}, tasks: {}, schemaChallenges: {} }, {merge:true});            }            renderIdeas();             renderFiles();            renderHabitsGlobal();            renderSnippets();            if (!isTypingTask) renderTasks();            if (!isTypingSchema) renderSchemaChallenges();        });    }
+    function updateGlobal(key, data) {        if(!currentUser) return;        db.collection('utenti').doc(currentUser.uid).collection('impostazioni').doc('os_globals').set({ [key]: data }, {merge: true});    }        function getDocRef(dateKey = selectedDateKey) {         return db.collection('utenti').doc(currentUser.uid).collection('giornate_os').doc(dateKey);     }
+    function setupSelects() {        const mSel = document.getElementById('month-select'); const ySel = document.getElementById('year-select'); const now = new Date();        months.forEach((m, i) => { let opt = new Option(m, i); if(i === now.getMonth()) opt.selected = true; mSel.add(opt); });        for(let i = 2024; i <= 2030; i++) { let opt = new Option(i, i); if(i === now.getFullYear()) opt.selected = true; ySel.add(opt); }        renderCalendar();    }        function renderCalendar() {        const grid = document.getElementById('calendar-grid'); const month = parseInt(document.getElementById('month-select').value); const year = parseInt(document.getElementById('year-select').value);        grid.innerHTML = ''; ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].forEach(d => grid.innerHTML += `<div class="day-name">${d}</div>`);        const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();        let offset = firstDay === 0 ? 6 : firstDay - 1; for(let i=0; i<offset; i++) grid.innerHTML += `<div></div>`;        const today = new Date();        for(let d=1; d<=daysInMonth; d++) {            const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;            const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) ? 'today' : '';            const isSelected = dateKey === selectedDateKey ? 'selected' : '';            grid.innerHTML += `<div class="day ${isToday} ${isSelected}" onclick="selectDay(${d}, ${month}, ${year})">${d}</div>`;        }    }        function selectDay(d, m, y) {        selectedDateKey = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;        document.getElementById('current-selection-date').innerText = `${d} ${months[m]} ${y}`;                document.getElementById('journal-input').value = "";        document.getElementById('journal-input').readOnly = false;        document.getElementById('btn-save-journal').style.display = 'inline-block';        document.getElementById('btn-edit-journal').style.display = 'none';
+        document.getElementById('gratitude-input').value = "";        document.getElementById('gratitude-input').readOnly = false;        document.getElementById('btn-save-gratitude').style.display = 'inline-block';        document.getElementById('btn-edit-gratitude').style.display = 'none';                document.querySelectorAll('input[name="mood-radio"]').forEach(r => r.checked = false);
+        renderCalendar();         loadDataForDate(selectedDateKey);        loadMonthDataForCharts(y, m);    }
+    async function loadDataForDate(dateKey) {        if (!currentUser) return;        if (unsubscribeSnapshot) unsubscribeSnapshot();
+        unsubscribeSnapshot = getDocRef(dateKey).onSnapshot((doc) => {            let data = doc.exists ? doc.data() : { journal: "", gratitude: "", mood: 0, habitsLog: {} };                        const jInput = document.getElementById('journal-input');            const btnSave = document.getElementById('btn-save-journal');            const btnEdit = document.getElementById('btn-edit-journal');
+            if (document.activeElement !== jInput) {                jInput.value = data.journal || "";                                if(data.journal && data.journal.trim() !== "") {                    jInput.readOnly = true;                    btnSave.style.display = 'none';                    btnEdit.style.display = 'inline-block';                } else {                    jInput.readOnly = false;                    btnSave.style.display = 'inline-block';                    btnEdit.style.display = 'none';                }            }
+            const gInput = document.getElementById('gratitude-input');            const btnSaveG = document.getElementById('btn-save-gratitude');            const btnEditG = document.getElementById('btn-edit-gratitude');
+            if (document.activeElement !== gInput) {                gInput.value = data.gratitude || "";                                if(data.gratitude && data.gratitude.trim() !== "") {                    gInput.readOnly = true;                    btnSaveG.style.display = 'none';                    btnEditG.style.display = 'inline-block';                } else {                    gInput.readOnly = false;                    btnSaveG.style.display = 'inline-block';                    btnEditG.style.display = 'none';                }            }
+            const moodRadios = document.querySelectorAll('input[name="mood-radio"]');            moodRadios.forEach(radio => {                radio.checked = parseInt(radio.value) === data.mood;            });
+            syncHabitsCheckboxes(data.habitsLog || {});        });    }
+    // --- SALVATAGGIO MANUALE DIARIO ---    function saveJournal() {        const text = document.getElementById('journal-input').value;        const currentDataKey = selectedDateKey;                 getDocRef(currentDataKey).set({ journal: text }, { merge: true }).then(() => {            document.getElementById('journal-input').readOnly = true;            document.getElementById('btn-save-journal').style.display = 'none';            document.getElementById('btn-edit-journal').style.display = 'inline-block';        });    }
+    function editJournal() {        const jInput = document.getElementById('journal-input');        jInput.readOnly = false;        jInput.focus();        document.getElementById('btn-save-journal').style.display = 'inline-block';        document.getElementById('btn-edit-journal').style.display = 'none';    }
+    // --- SALVATAGGIO MANUALE GRATITUDINE ---    function saveGratitude() {        const text = document.getElementById('gratitude-input').value;        const currentDataKey = selectedDateKey;                 getDocRef(currentDataKey).set({ gratitude: text }, { merge: true }).then(() => {            document.getElementById('gratitude-input').readOnly = true;            document.getElementById('btn-save-gratitude').style.display = 'none';            document.getElementById('btn-edit-gratitude').style.display = 'inline-block';        });    }
+    function editGratitude() {        const gInput = document.getElementById('gratitude-input');        gInput.readOnly = false;        gInput.focus();        document.getElementById('btn-save-gratitude').style.display = 'inline-block';        document.getElementById('btn-edit-gratitude').style.display = 'none';    }
+    function saveMood(value) {        getDocRef().set({ mood: value }, { merge: true });        const y = parseInt(document.getElementById('year-select').value);        const m = parseInt(document.getElementById('month-select').value);        loadMonthDataForCharts(y, m);    }
+    // --- ABITUDINI (Lista Semplice) ---    function addHabit() {        const name = prompt("Nome della nuova abitudine (es. Lettura, Allenamento):");        if(name) {            const id = "hab_" + Date.now();            globalHabits[id] = { id, name };            updateGlobal('habits', globalHabits);        }    }    function deleteHabit(id) {        delete globalHabits[id];        updateGlobal('habits', globalHabits);    }    function renderHabitsGlobal() {        const list = document.getElementById('habits-list'); list.innerHTML = '';        Object.values(globalHabits).forEach(hab => {            list.innerHTML += `                <div class="list-item">                    <input type="checkbox" id="chk_${hab.id}" style="width:18px; height:18px; cursor:pointer;" onchange="saveHabitLog('${hab.id}')">                    <span style="flex:1; font-weight:600; font-size: 0.9rem;">${hab.name}</span>                    <button class="delete-btn" onclick="deleteHabit('${hab.id}')">✕</button>                </div>            `;        });        if(currentUser && selectedDateKey) {            getDocRef().get().then(doc => {                if(doc.exists) syncHabitsCheckboxes(doc.data().habitsLog || {});            });        }    }    function saveHabitLog(habId) {        const isChecked = document.getElementById(`chk_${habId}`).checked;        getDocRef().set({ habitsLog: { [habId]: isChecked } }, { merge: true }).then(() => {            const y = parseInt(document.getElementById('year-select').value);            const m = parseInt(document.getElementById('month-select').value);            loadMonthDataForCharts(y, m);         });    }    function syncHabitsCheckboxes(logs) {        Object.values(globalHabits).forEach(hab => {            const chk = document.getElementById(`chk_${hab.id}`);            if(chk) chk.checked = !!logs[hab.id];        });    }
+    // --- IDEE (Ora Checkabili) ---    function addIdea() {        const input = document.getElementById('new-idea-input');        const text = input.value.trim();        if(text) {            const id = "idea_" + Date.now();            globalIdeas[id] = { id, text, completed: false };            updateGlobal('ideas', globalIdeas);            input.value = '';        }    }    function toggleIdea(id) {        if(globalIdeas[id]) {            globalIdeas[id].completed = !globalIdeas[id].completed;            updateGlobal('ideas', globalIdeas);        }    }    function renderIdeas() {        const list = document.getElementById('ideas-list'); list.innerHTML = '';        Object.values(globalIdeas).reverse().forEach(idea => {            const isChecked = idea.completed ? 'checked' : '';            const textStyle = idea.completed ? 'text-decoration: line-through; color: var(--done); opacity: 0.6;' : '';            list.innerHTML += `                <div class="list-item">                    <input type="checkbox" ${isChecked} style="width:18px; height:18px; cursor:pointer;" onchange="toggleIdea('${idea.id}')">                    <span style="flex:1; font-size: 0.9rem; ${textStyle}">${idea.text}</span>                    <button class="delete-btn" onclick="delete globalIdeas['${idea.id}']; updateGlobal('ideas', globalIdeas);">✕</button>                </div>            `;        });    }    // --- SFIDA ALLO SCHEMA ---    function renderSchemaChallenges() {        const container = document.getElementById('schemas-list');        if(!container) return;        let html = '';        let catIndex = 0;                for (const [category, schemas] of Object.entries(schemaCategories)) {            let catId = 'schema_cat_' + catIndex;            html += `                <div style="margin-bottom: 10px;">                    <div class="sub-acc-header" style="background:#222; color:var(--accent);" onclick="toggleSubAcc('${catId}')">                        <span>${category}</span><span>▼</span>                    </div>                    <div class="sub-acc-content" id="${catId}" style="display:none; padding:5px; background:transparent; border:none;">            `;                        schemas.forEach((schemaObj, sIndex) => {                let schemaKey = 'schema_' + catIndex + '_' + sIndex;                let schemaId = 'schema_item_' + catIndex + '_' + sIndex;                let savedText = globalSchemaChallenges[schemaKey] || "";                                html += `                    <div style="margin-bottom: 8px;">                        <div class="sub-acc-header" style="font-size:0.85rem; padding:8px;" onclick="toggleSubAcc('${schemaId}')">                            <span>${schemaObj.name}</span>                        </div>                        <div class="sub-acc-content" id="${schemaId}" style="display:none; padding:10px; background:#1a1a1a;">                            <p style="font-size:0.8rem; color:#888; margin-bottom:10px; font-style:italic; line-height:1.4;">${schemaObj.desc}</p>                            <textarea id="txt_${schemaKey}" placeholder="Qual è la tua sfida concreta a questo schema?" style="width:100%; height:80px; font-size:0.85rem; padding:8px; resize:vertical; margin-bottom:5px;">${savedText}</textarea>                            <button class="add-btn" style="margin-top:0; padding:6px; font-size:0.8rem;" onclick="saveSchemaChallenge('${schemaKey}')">Salva Sfida</button>                        </div>                    </div>                `;            });                        html += `</div></div>`;            catIndex++;        }                container.innerHTML = html;    }
+    function saveSchemaChallenge(key) {        const textEl = document.getElementById('txt_' + key);        if(!textEl) return;        globalSchemaChallenges[key] = textEl.value.trim();        updateGlobal('schemaChallenges', globalSchemaChallenges);                const toast = document.getElementById("toast");        toast.innerText = "Sfida Salvata!";        toast.className = "show";        setTimeout(() => {             toast.className = toast.className.replace("show", "");             setTimeout(() => { toast.innerText = "Appunti Copiati!"; }, 400); // Ripristina testo base        }, 2500);    }
+    // --- SNIPPET DI TESTO / CODICE ---    function addSnippet() {        const titleEl = document.getElementById('snippet-title-input');        const contentEl = document.getElementById('snippet-content-input');        const title = titleEl.value.trim();        const content = contentEl.value.trim();                if(title && content) {            const id = "snip_" + Date.now();            globalSnippets[id] = { id, title, content };            updateGlobal('snippets', globalSnippets);            titleEl.value = ''; contentEl.value = '';        } else {            alert("Inserisci sia il titolo che il testo/codice.");        }    }    function deleteSnippet(id) {        if(confirm("Eliminare questo testo?")) {            delete globalSnippets[id];            updateGlobal('snippets', globalSnippets);        }    }    function copySnippet(id) {        const snip = globalSnippets[id];        if(!snip) return;        navigator.clipboard.writeText(snip.content).then(() => {            const toast = document.getElementById("toast");            toast.className = "show";            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);        });    }    function renderSnippets() {        const list = document.getElementById('snippets-list'); list.innerHTML = '';        Object.values(globalSnippets).reverse().forEach(snip => {            const accId = 'snip_content_' + snip.id;            list.innerHTML += `                <div>                    <div class="sub-acc-header" onclick="toggleSubAcc('${accId}')">                        <span style="flex:1;">📝 ${snip.title}</span>                        <button class="delete-btn" onclick="event.stopPropagation(); deleteSnippet('${snip.id}')" style="margin-left:10px;">✕</button>                    </div>                    <div class="sub-acc-content" id="${accId}">                        <button onclick="copySnippet('${snip.id}')" style="margin-bottom: 8px; background: #333; color: white; border: 1px solid var(--accent); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">📋 Copia</button>                        <br>${snip.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}                    </div>                </div>            `;        });    }
+    // --- FILES FISICI ---    async function uploadFile(event) {        const file = event.target.files[0];        if(!file || !currentUser) return;
+        const nameInput = document.getElementById('file-name-input');        const customName = nameInput.value.trim() || file.name;
+        const statusText = document.getElementById('upload-status');        statusText.style.display = 'block';        statusText.innerText = "Caricamento in corso...";
+        try {            const fileRef = storage.ref(`utenti/${currentUser.uid}/files/${Date.now()}_${file.name}`);            await fileRef.put(file);            const downloadUrl = await fileRef.getDownloadURL();                        const fileId = "file_" + Date.now();            globalFiles[fileId] = {                id: fileId,                name: customName,                url: downloadUrl,                path: fileRef.fullPath            };                        updateGlobal('files', globalFiles);                        nameInput.value = "";             statusText.style.display = 'none';
+        } catch (error) {            console.error(error);            statusText.innerText = "Errore durante il caricamento! Hai attivato Firebase Storage?";            setTimeout(() => statusText.style.display = 'none', 4000);        }        event.target.value = '';    }
+    async function deleteFile(fileId) {        if(!confirm("Sicuro di voler eliminare questo file?")) return;                const fileData = globalFiles[fileId];        if(!fileData) return;
+        try {            await storage.ref(fileData.path).delete();        } catch (e) {            console.log("File non trovato nello storage, lo rimuovo solo dal database", e);        }
+        delete globalFiles[fileId];        updateGlobal('files', globalFiles);    }
+    function renderFiles() {        const list = document.getElementById('files-list'); list.innerHTML = '';        Object.values(globalFiles).reverse().forEach(f => {            list.innerHTML += `                <div class="saved-item">                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; font-size: 0.9rem;">📎 ${f.name}</span>                    <div style="display:flex; gap: 10px; align-items:center;">                        <a href="${f.url}" target="_blank" class="file-link">Apri ↗</a>                        <button class="delete-btn" onclick="deleteFile('${f.id}')">✕</button>                    </div>                </div>            `;        });    }
+    // --- COSE DA FARE (Global Tasks) ---    function addNewTask() {        const id = "task_" + Date.now();        globalTasks[id] = { id: id, text: "", completed: false, ts: Date.now() };        updateGlobal('tasks', globalTasks);        setTimeout(() => {            const el = document.querySelector(`#${id} .task-text`);            if(el) { el.focus(); el.select(); }        }, 50);    }
+    function renderTasks() {        const list = document.getElementById('task-list');        if(!list) return;        list.innerHTML = '';        Object.values(globalTasks).sort((a,b) => a.ts - b.ts).forEach(data => {            const div = document.createElement('div'); div.className = 'task-item'; div.id = data.id;            div.innerHTML = `                <div class="check-btn ${data.completed ? 'active' : ''}" onclick="toggleTask('${data.id}')"></div>                <input type="text" class="task-text ${data.completed ? 'completed' : ''}" value="${data.text ? data.text.replace(/"/g, '&quot;') : ''}" placeholder="Nuova attività..." onclick="this.select()" oninput="debounceSaveTask('${data.id}')" onkeydown="if(event.key==='Enter') this.blur()">                <span class="delete-btn" onclick="deleteTask('${data.id}')">✕</span>            `;            list.appendChild(div);        });    }
+    function toggleTask(id) {        if(globalTasks[id]) {            globalTasks[id].completed = !globalTasks[id].completed;            updateGlobal('tasks', globalTasks);        }    }
+    function deleteTask(id) {        if(confirm("Eliminare questa attività?")) {            delete globalTasks[id];            updateGlobal('tasks', globalTasks);        }    }
+    function debounceSaveTask(id) {        clearTimeout(saveTimeouts['task_'+id]);        saveTimeouts['task_'+id] = setTimeout(() => {            const el = document.getElementById(id); if(!el) return;            const text = el.querySelector('.task-text').value;            if(globalTasks[id]) {                globalTasks[id].text = text;                updateGlobal('tasks', globalTasks);            }        }, 500);    }
+    // --- GRAFICI (Umore e Abitudini) ---    async function loadMonthDataForCharts(year, month) {        if(!currentUser) return;        const startStr = `${year}-${String(month+1).padStart(2,'0')}-01`;        const endStr = `${year}-${String(month+1).padStart(2,'0')}-31`;                try {            const snapshot = await db.collection('utenti').doc(currentUser.uid).collection('giornate_os')                .where(firebase.firestore.FieldPath.documentId(), '>=', startStr)                .where(firebase.firestore.FieldPath.documentId(), '<=', endStr)                .get();                        let daysMap = {};            snapshot.forEach(doc => {                daysMap[doc.id] = doc.data();            });
+            renderCharts(year, month, daysMap);        } catch(e) {            console.error("Errore fetch dati grafici:", e);        }    }
+    function renderCharts(year, month, daysMap) {        const daysInMonth = new Date(year, month + 1, 0).getDate();        const labels = Array.from({length: daysInMonth}, (_, i) => i + 1);                const moodData = [];         const habitsData = [];
+        for(let d = 1; d <= daysInMonth; d++) {            const key = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;            const dayInfo = daysMap[key] || {};                        moodData.push(dayInfo.mood || null);                         let completedHabits = 0;            if(dayInfo.habitsLog) {                completedHabits = Object.values(dayInfo.habitsLog).filter(v => v === true).length;            }            habitsData.push(completedHabits || null);        }
+        const ctxMood = document.getElementById('moodChart').getContext('2d');        if(moodChartInstance) moodChartInstance.destroy();        moodChartInstance = new Chart(ctxMood, {            type: 'line',            data: {                labels: labels,                datasets: [{                    label: 'Umore',                    data: moodData,                     borderColor: '#f39c12',                    backgroundColor: 'rgba(243, 156, 18, 0.2)',                    borderWidth: 2,                    pointBackgroundColor: '#f39c12',                    tension: 0.3,                     spanGaps: true                 }]            },            options: { responsive: true, scales: { y: { min: 1, max: 10, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }        });
+        const ctxHabits = document.getElementById('habitsChart').getContext('2d');        if(habitsChartInstance) habitsChartInstance.destroy();        habitsChartInstance = new Chart(ctxHabits, {            type: 'bar',            data: {                labels: labels,                datasets: [{                    label: 'Abitudini Completate',                    data: habitsData,                     backgroundColor: '#27ae60',                    borderRadius: 4                }]            },            options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }        });    }
+</script></body></html>
